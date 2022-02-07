@@ -16,6 +16,7 @@ func main() {
 	http.HandleFunc("/repeat", GetRepeatToken)
 	http.HandleFunc("/passenger", GetPassenger)
 	http.HandleFunc("/buy", StartBuy)
+	http.HandleFunc("/test-reg", TestReg)
 	http.ListenAndServe("127.0.0.1:8000", nil)
 }
 
@@ -101,4 +102,16 @@ func StartBuy(w http.ResponseWriter, r *http.Request) {
 	//
 	//fmt.Println(res)
 	//fmt.Println(res.Data)
+}
+
+func TestReg(w http.ResponseWriter, r *http.Request) {
+	body, _ := ioutil.ReadAll(r.Body)
+	matchRes := TokenRe.FindStringSubmatch(string(body))
+	fmt.Println(matchRes)
+
+	ticketRes := TicketInfoRe.FindStringSubmatch(string(body))
+	fmt.Println(ticketRes)
+
+	orderRes := OrderRequestParam.FindStringSubmatch(string(body))
+	fmt.Println(orderRes)
 }

@@ -58,7 +58,7 @@ type PassengerRes struct {
 		NormalPassengers []*Passenger `json:"normal_passengers"`
 	} `json:"data"`
 	Messages    []string `json:"messages"`
-	SubmitToken string
+	SubmitToken *SubmitToken
 }
 
 type Passenger struct {
@@ -93,8 +93,16 @@ type Passenger struct {
 	PassengerUuid       string `json:"passenger_uuid"`
 }
 
+type SubmitToken struct {
+	Token             string
+	TicketInfo        map[string]interface{}
+	OrderRequestParam map[string]interface{}
+}
+
 var (
 	TokenRe = regexp.MustCompile("var globalRepeatSubmitToken = '(.+)';")
+	TicketInfoRe = regexp.MustCompile("var ticketInfoForPassengerForm=(.+);")
+	OrderRequestParam = regexp.MustCompile("var orderRequestDTO=(.+);")
 )
 
 func Search(searchParam *SearchParam) []*SearchData {
@@ -165,7 +173,7 @@ func Search(searchParam *SearchParam) []*SearchData {
 	return searchDatas
 }
 
-func GetRepeatSubmitToken() string {
+func GetRepeatSubmitToken() *SubmitToken {
 	req, err := http.NewRequest("GET", "https://kyfw.12306.cn/otn/confirmPassenger/initDc", strings.NewReader(""))
 	if err != nil {
 		log.Panicln(err)
@@ -183,27 +191,39 @@ func GetRepeatSubmitToken() string {
 		log.Panicln(err)
 	}
 
+	res := new(SubmitToken)
+
 	matchRes := TokenRe.FindStringSubmatch(string(body))
 	if len(matchRes) > 1 {
-		return matchRes[1]
+		res.Token = matchRes[1]
 	}
 
-	return ""
+	ticketRes := TicketInfoRe.FindSubmatch(body)
+	if len(ticketRes) > 1 {
+		err = json.Unmarshal(ticketRes[1], &res.TicketInfo)
+	}
+
+	orderRes := OrderRequestParam.FindSubmatch(body)
+	if len(orderRes) > 1 {
+		err = json.Unmarshal(orderRes[1], &res.OrderRequestParam)
+	}
+
+	return res
 }
 
 func GetPassengers(loginRes *LoginRes) *PassengerRes {
 	submitToken := GetRepeatSubmitToken()
-	if submitToken == "" {
+	if submitToken.Token == "" {
 		log.Panicln("submitToken is empty")
 	}
 	// submit token 需要一样
 	if tmpCookie["submit_token"] != "" {
-		submitToken = tmpCookie["submit_token"]
+		submitToken.Token = tmpCookie["submit_token"]
 	}
 
 	data := make(url.Values)
 	data.Set("_json_att", "")
-	data.Set("REPEAT_SUBMIT_TOKEN", submitToken)
+	data.Set("REPEAT_SUBMIT_TOKEN", submitToken.Token)
 	res := new(PassengerRes)
 	err := request(data, cookieStr(), "https://kyfw.12306.cn/otn/confirmPassenger/getPassengerDTOs", res)
 	if err != nil {
