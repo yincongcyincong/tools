@@ -3,15 +3,16 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/tools/12306/module"
+	"github.com/tools/12306/utils"
 	"io/ioutil"
 	"net/http"
 )
 
-var loginRes *LoginRes
-
 func main() {
 
 	http.HandleFunc("/login", UserLogin)
+	http.HandleFunc("/loginOut", UserLogout)
 	http.HandleFunc("/search", SearchTrain)
 	http.HandleFunc("/repeat", GetRepeatToken)
 	http.HandleFunc("/passenger", GetPassenger)
@@ -21,52 +22,47 @@ func main() {
 }
 
 func UserLogin(w http.ResponseWriter, r *http.Request) {
-	loginRes = QrLogin()
+	loginRes := QrLogin()
 	res, _ := json.Marshal(loginRes)
 	fmt.Fprint(w, string(res))
 }
 
+
+func UserLogout(w http.ResponseWriter, r *http.Request) {
+	LoginOut()
+}
+
 func SearchTrain(w http.ResponseWriter, r *http.Request) {
-	searchParam := &SearchParam{
-		TrainData:   "2022-02-17",
+	searchParam := &module.SearchParam{
+		TrainDate:   "2022-02-17",
 		FromStation: "BJP",
 		ToStation:   "TJP",
 	}
-	if len(tmpCookie) == 2 {
+	if len(utils.GetCookie().Cookie) == 2 {
 		body, _ := ioutil.ReadAll(r.Body)
-		a := &http.Response{
-			Header: make(map[string][]string),
-		}
-		a.Header.Set("Set-Cookie", string(body))
-		addCookie(a)
+		utils.AddCookieStr([]string{string(body)})
 	}
 
-	Search(searchParam)
+	GetTrainInfo(searchParam)
 }
 
 func GetRepeatToken(w http.ResponseWriter, r *http.Request) {
 
-	if len(tmpCookie) == 2 {
+	if len(utils.GetCookie().Cookie) == 2 {
 		body, _ := ioutil.ReadAll(r.Body)
-		a := &http.Response{}
-		a.Header.Set("Set-Cookie", string(body))
-		addCookie(a)
+		utils.AddCookieStr([]string{string(body)})
 	}
 	GetRepeatSubmitToken()
 }
 
 func GetPassenger(w http.ResponseWriter, r *http.Request) {
 
-	if len(tmpCookie) == 2 {
+	if len(utils.GetCookie().Cookie) == 2 {
 		body, _ := ioutil.ReadAll(r.Body)
-		a := &http.Response{
-			Header: make(map[string][]string),
-		}
-		a.Header.Set("Set-Cookie", string(body))
-		addCookie(a)
+		utils.AddCookieStr([]string{string(body)})
 	}
 
-	GetPassengers(loginRes)
+	GetPassengers()
 
 	//body, _ := ioutil.ReadAll(r.Body)
 	//
@@ -81,37 +77,46 @@ func GetPassenger(w http.ResponseWriter, r *http.Request) {
 
 func StartBuy(w http.ResponseWriter, r *http.Request) {
 
-	if len(tmpCookie) == 2 {
+	if len(utils.GetCookie().Cookie) == 2 {
 		body, _ := ioutil.ReadAll(r.Body)
-		a := &http.Response{
-			Header: make(map[string][]string),
-		}
-		a.Header.Set("Set-Cookie", string(body))
-		addCookie(a)
+		utils.AddCookieStr([]string{string(body)})
 	}
 
-	passenger := GetPassengers(loginRes)
-	Buy(passenger)
+	CheckUser()
+	fmt.Println(utils.GetCookieStr())
 
-	//body, _ := ioutil.ReadAll(r.Body)
-	//
-	//res := new(PassengerRes)
-	//res.Data.NormalPassengers = make([]*Passenger, 0)
-	//
-	//json.Unmarshal(body, res)
-	//
-	//fmt.Println(res)
-	//fmt.Println(res.Data)
+	searchParam := &module.SearchParam{
+		TrainDate:   "2022-02-17",
+		FromStation: "BJP",
+		ToStation:   "TJP",
+	}
+	trainDatas := GetTrainInfo(searchParam)
+	passenger := GetPassengers()
+
+	checkOrderRes := CheckOrder(passenger, trainDatas[10])
+	fmt.Println(fmt.Sprintf("%+v", checkOrderRes))
+
+	queueRes := GetQueueCount(passenger, trainDatas[10], searchParam)
+	fmt.Println(fmt.Sprintf("%+v", queueRes))
+	//AutoBuy(passenger, trainDatas[10])
+
+
 }
 
 func TestReg(w http.ResponseWriter, r *http.Request) {
-	body, _ := ioutil.ReadAll(r.Body)
-	matchRes := TokenRe.FindStringSubmatch(string(body))
-	fmt.Println(matchRes)
+	CheckUser()
 
-	ticketRes := TicketInfoRe.FindStringSubmatch(string(body))
-	fmt.Println(ticketRes)
-
-	orderRes := OrderRequestParam.FindStringSubmatch(string(body))
-	fmt.Println(orderRes)
+	//body, _ := ioutil.ReadAll(r.Body)
+	//matchRes := TokenRe.FindStringSubmatch(string(body))
+	//fmt.Println(matchRes)
+	//
+	//ticketRes := TicketInfoRe.FindSubmatch(body)
+	//fmt.Println(ticketRes)
+	//
+	//orderRes := OrderRequestParam.FindSubmatch(body)
+	//fmt.Println(string(orderRes[1]))
+	//
+	//orderRes[1] = bytes.Replace(orderRes[1], []byte("'"), []byte(`"`), -1)
+	//err := json.Unmarshal(orderRes[1], &submitToken.OrderRequestParam)
+	//fmt.Println(submitToken.OrderRequestParam, err)
 }
