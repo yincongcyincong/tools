@@ -16,7 +16,7 @@ import (
 
 var loginUser *module.LoginUser
 
-func init()  {
+func init() {
 	loginUser = new(module.LoginUser)
 }
 
@@ -80,7 +80,6 @@ func QrLogin() {
 	GetLoginData()
 }
 
-
 func GetLoginData() {
 	data := make(url.Values)
 	data.Set("appid", "otn")
@@ -103,6 +102,13 @@ func GetLoginData() {
 	}
 	loginUser.ApiRes = apiRes
 	fmt.Println(fmt.Sprintf("%+v", apiRes))
+
+	staticTk := new(module.TkRes)
+	err = utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/passport/web/auth/uamtk-static", staticTk, nil)
+	if err != nil {
+		log.Panicln(err)
+	}
+	fmt.Println(fmt.Sprintf("%+v", staticTk))
 
 }
 

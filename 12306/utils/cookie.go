@@ -20,26 +20,9 @@ func GetCookie() *CookieInfo {
 			lock:   sync.Mutex{},
 		}
 
-		cookie.Cookie["RAIL_DEVICEID"] = "HxVKRYFybjjce3j_YFUSj3YCSikCtGnQMTRB_ivkGogYJI_Zub0z5XAjSE6mis4hAeHrm0b9WIr8rpCwIpTP3wfFa2PUE67-RmNB25iPrKTA1XFxiQk4PywZh0czQHuGNifLJpeXTUzMDC7fRpMy5qH0kWuIktLB"
-		cookie.Cookie["RAIL_EXPIRATION"] = "1644399124143"
+		cookie.Cookie["RAIL_DEVICEID"] = "NQl1KbtiC9ytGXWvYmSKevxQLhMDHuidN3AhAIoyeatifKs9WHMlOa3zIkpJmTQsj39fUlrwE5ai9tUlTCYu7wZUjHbbPy1KhQbN9QhNgSkeIbUWa8ij_sXKoh2RtFUKogKSq6k3y0Vk2oZJxd0N-UiJzpKgN3sf"
+		cookie.Cookie["RAIL_EXPIRATION"] = "1644684709232"
 
-		//cookie.Cookie["guidesStatus"] = "off"
-		//cookie.Cookie["highContrastMode"] = "defaltMode"
-		//cookie.Cookie["cursorStatus"] = "off"
-		//cookie.Cookie["current_captcha_type"] = "Z"
-		//
-		//// 第二
-		//cookie.Cookie["_jc_save_fromStation"] = "%u5317%u4EAC%2CBJP"
-		//cookie.Cookie["_jc_save_toStation"] = "%u5929%u6D25%2CTJP"
-		//cookie.Cookie["_jc_save_wfdc_flag"] = "dc"
-		//cookie.Cookie["_jc_save_showIns"] = "true"
-		//cookie.Cookie["_jc_save_fromDate"] = "2022-02-17"
-		//cookie.Cookie["_jc_save_toDate"] = "2022-02-09"
-		//
-		//// 第三
-		//cookie.Cookie["BIGipServerportal"] = "3151233290.17695.0000"
-		//cookie.Cookie["BIGipServerpool_passport"] = "165937674.50215.0000"
-		//cookie.Cookie["Expires"] = "Thu, 01-Jan-1970 00:00:10 GMT"
 	}
 
 	return cookie
