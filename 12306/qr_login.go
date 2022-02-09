@@ -14,8 +14,13 @@ import (
 	"time"
 )
 
+var loginUser *module.LoginUser
 
-func QrLogin() *module.LoginRes {
+func init()  {
+	loginUser = new(module.LoginUser)
+}
+
+func QrLogin() {
 	initReq, err := http.NewRequest("GET", "https://kyfw.12306.cn/otn/login/init", strings.NewReader(""))
 	if err != nil {
 		log.Panicln(err)
@@ -29,9 +34,8 @@ func QrLogin() *module.LoginRes {
 
 	data := make(url.Values)
 	data.Set("appid", "otn")
-
 	qrImage := new(module.QrImage)
-	err = utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/passport/web/create-qr64", qrImage)
+	err = utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/passport/web/create-qr64", qrImage, nil)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -51,7 +55,7 @@ func QrLogin() *module.LoginRes {
 	data.Set("RAIL_EXPIRATION", utils.GetCookie().Cookie["RAIL_EXPIRATION"])
 	qrRes := new(module.QrRes)
 	for i := 0; i < 100; i++ {
-		err = utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/passport/web/checkqr", qrRes)
+		err = utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/passport/web/checkqr", qrRes, nil)
 		if err == nil && qrRes.ResultCode == "2" {
 			break
 		} else {
@@ -59,23 +63,32 @@ func QrLogin() *module.LoginRes {
 		}
 		time.Sleep(1 * time.Second)
 	}
+	loginUser.QrRes = qrRes
 
 	// 验证信息，获取tk
 	tk := new(module.TkRes)
 	utils.GetCookie().Cookie["uamtk"] = qrRes.Uamtk
-	err = utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/passport/web/auth/uamtk", tk)
+	err = utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/passport/web/auth/uamtk", tk, nil)
 	if err != nil {
 		log.Panicln(err)
 	}
 	if tk.ResultCode != 0 {
 		log.Panicln(tk.ResultMessage)
 	}
+	loginUser.TkRes = tk
 
+	GetLoginData()
+}
+
+
+func GetLoginData() {
+	data := make(url.Values)
+	data.Set("appid", "otn")
 	// 获取用户信息
 	userRes := new(module.UserRes)
-	data.Set("tk", tk.Newapptk)
-	utils.GetCookie().Cookie["tk"] = tk.Newapptk
-	err = utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/otn/uamauthclient", userRes)
+	data.Set("tk", loginUser.TkRes.Newapptk)
+	utils.GetCookie().Cookie["tk"] = loginUser.TkRes.Newapptk
+	err := utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/otn/uamauthclient", userRes, nil)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -84,17 +97,13 @@ func QrLogin() *module.LoginRes {
 	}
 
 	apiRes := new(module.ApiRes)
-	err = utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/otn/index/initMy12306Api", apiRes)
+	err = utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/otn/index/initMy12306Api", apiRes, nil)
 	if err != nil {
 		log.Panicln(err)
 	}
+	loginUser.ApiRes = apiRes
 	fmt.Println(fmt.Sprintf("%+v", apiRes))
 
-	return &module.LoginRes{
-		TkRes:   tk,
-		QrRes:   qrRes,
-		UserRes: userRes,
-	}
 }
 
 func LoginOut() {
@@ -120,6 +129,3 @@ func createQrCode(captchBody []byte) {
 		return
 	}
 }
-
-
-

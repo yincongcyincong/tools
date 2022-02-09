@@ -34,7 +34,7 @@ func GetClient() *http.Client {
 
 }
 
-func Request(data url.Values, cookieStr, url string, res interface{}) error {
+func Request(data url.Values, cookieStr, url string, res interface{}, headers map[string]string) error {
 
 	req, err := http.NewRequest("POST", url, strings.NewReader(data.Encode()))
 	if err != nil {
@@ -46,6 +46,9 @@ func Request(data url.Values, cookieStr, url string, res interface{}) error {
 	req.Header.Set("Host", "kyfw.12306.cn")
 	req.Header.Set("X-Requested-With", "XMLHttpRequest")
 	req.Header.Set("Origin", "https://kyfw.12306.cn")
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
 
 	resp, err := GetClient().Do(req)
 	if err != nil {
@@ -59,7 +62,7 @@ func Request(data url.Values, cookieStr, url string, res interface{}) error {
 
 	err = json.Unmarshal(respBody, res)
 	if err != nil {
-		log.Panicln(err, string(respBody))
+		log.Panicln(err, string(respBody), url)
 		return err
 	}
 
@@ -67,8 +70,8 @@ func Request(data url.Values, cookieStr, url string, res interface{}) error {
 	setCookies := resp.Header.Values("Set-Cookie")
 	AddCookieStr(setCookies)
 
-	if url == "https://kyfw.12306.cn/otn/confirmPassenger/checkOrderInfo" || url == "https://kyfw.12306.cn/otn/confirmPassenger/getQueueCountAsync" {
-		fmt.Println(string(respBody))
+	if url == "https://kyfw.12306.cn/otn/confirmPassenger/checkOrderInfo" || url == "https://kyfw.12306.cn/otn/confirmPassenger/getQueueCountAsync" || url == "https://kyfw.12306.cn/otn/leftTicket/submitOrderRequest" {
+		fmt.Println(url, string(respBody))
 	}
 
 	return nil

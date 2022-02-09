@@ -39,3 +39,11 @@ type ApiRes struct {
 	Data                   map[string]interface{} `json:"data"`
 	Messages               []string               `json:"messages"`
 }
+
+type LoginUser struct {
+	QrRes       *QrRes
+	TkRes       *TkRes
+	UserRes     *UserRes
+	ApiRes      *ApiRes
+	SubmitToken *SubmitToken
+}

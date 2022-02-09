@@ -6,32 +6,28 @@ import (
 	"github.com/tools/12306/utils"
 	"log"
 	"net/url"
+	"strings"
 	"time"
 )
 
-func SubmitOrder(passengerRes *module.PassengerRes, trainData *module.TrainData) {
-
-}
-
-func CheckOrder(passengerRes *module.PassengerRes, trainData *module.TrainData) *module.CheckOrderRes {
-	//passengerTicketStr : 座位编号,0,票类型,乘客名,证件类型,证件号,手机号码,保存常用联系人(Y或N)
-	//oldPassengersStr: 乘客名,证件类型,证件号,乘客类型
-
+func SubmitOrder(trainData *module.TrainData, searchParam *module.SearchParam) *module.SubmitOrderRes {
+	var err error
 	data := make(url.Values)
-	data.Set("bed_level_order_num", "000000000000000000000000000000")
-	data.Set("passengerTicketStr", "O,"+passengerRes.Data.NormalPassengers[0].PassengerTicketStr)
-	data.Set("oldPassengerStr", passengerRes.Data.NormalPassengers[0].OldPassengerStr)
+	data.Set("train_date", searchParam.TrainDate)
+	data.Set("back_train_date", time.Now().Format("2006-01-02"))
 	data.Set("tour_flag", "dc")
-	data.Set("randCode", "")
-	data.Set("cancel_flag", "2")
-	data.Set("_json_att", "")
-	data.Set("whatsSelected", "1")
-	data.Set("scene", "nc_login")
-	data.Set("REPEAT_SUBMIT_TOKEN", passengerRes.SubmitToken.Token)
+	data.Set("purpose_codes", "ADULT")
+	data.Set("query_from_station_name", "北京")
+	data.Set("query_to_station_name", "天津")
+	trainData.SecretStr, err = url.QueryUnescape(trainData.SecretStr)
+	if err != nil {
+		log.Panicln(err)
+	}
+	data.Set("secretStr", trainData.SecretStr)
 	fmt.Println(data)
 
-	checkOrderRes := new(module.CheckOrderRes)
-	err := utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/otn/confirmPassenger/checkOrderInfo", checkOrderRes)
+	checkOrderRes := new(module.SubmitOrderRes)
+	err = utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/otn/leftTicket/submitOrderRequest", checkOrderRes, map[string]string{"Referer": "https://kyfw.12306.cn/otn/leftTicket/init?linktypeid=dc"})
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -39,53 +35,73 @@ func CheckOrder(passengerRes *module.PassengerRes, trainData *module.TrainData) 
 	return checkOrderRes
 }
 
-func Confirm(passengerRes *module.PassengerRes) {
-	passengerTicketStr := fmt.Sprintf("0,%s,%s,%s,%s,%s,N,%s",
-		passengerRes.Data.NormalPassengers[0].PassengerType, passengerRes.Data.NormalPassengers[0].PassengerName,
-		passengerRes.Data.NormalPassengers[0].PassengerIdTypeCode, passengerRes.Data.NormalPassengers[0].PassengerIdNo,
-		passengerRes.Data.NormalPassengers[0].MobileNo, passengerRes.Data.NormalPassengers[0].AllEncStr)
-	oldPassengerStr := fmt.Sprintf("%s,%s,%s,%s_",
-		passengerRes.Data.NormalPassengers[0].PassengerName,
-		passengerRes.Data.NormalPassengers[0].PassengerIdTypeCode, passengerRes.Data.NormalPassengers[0].PassengerIdNo,
-		passengerRes.Data.NormalPassengers[0].PassengerType)
+func CheckOrder(passenger *module.Passenger, submitToken *module.SubmitToken) *module.CheckOrderRes {
+	//passengerTicketStr : 座位编号,0,票类型,乘客名,证件类型,证件号,手机号码,保存常用联系人(Y或N)
+	//oldPassengersStr: 乘客名,证件类型,证件号,乘客类型
 
 	data := make(url.Values)
-	data.Set("passengerTicketStr", "O,"+passengerTicketStr)
-	data.Set("oldPassengerStr", oldPassengerStr)
-	data.Set("purpose_codes", passengerRes.SubmitToken.TicketInfo["purpose_codes"].(string))
-	data.Set("key_check_isChange", passengerRes.SubmitToken.TicketInfo["key_check_isChange"].(string))
-	data.Set("leftTicketStr", passengerRes.SubmitToken.TicketInfo["leftTicketStr"].(string))
-	data.Set("train_location", passengerRes.SubmitToken.TicketInfo["train_location"].(string))
-	data.Set("seatDetailType", "")
+	data.Set("bed_level_order_num", "000000000000000000000000000000")
+	data.Set("passengerTicketStr", strings.Replace(url.QueryEscape("O,"+passenger.PassengerTicketStr), "%2A", "*", -1))
+	data.Set("oldPassengerStr", strings.Replace(url.QueryEscape(passenger.OldPassengerStr), "%2A", "*", -1))
+	data.Set("tour_flag", "dc")
+	data.Set("randCode", "")
+	data.Set("sessionId", "")
+	data.Set("sig", "")
+	data.Set("cancel_flag", "2")
+	data.Set("_json_att", "")
+	data.Set("whatsSelected", "1")
+	data.Set("scene", "nc_login")
+	data.Set("REPEAT_SUBMIT_TOKEN", submitToken.Token)
+	fmt.Println(data)
+
+	checkOrderRes := new(module.CheckOrderRes)
+	err := utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/otn/confirmPassenger/checkOrderInfo", checkOrderRes, map[string]string{"Referer": "https://kyfw.12306.cn/otn/confirmPassenger/initDc"})
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	return checkOrderRes
+}
+
+func ConfirmQueue(passenger *module.Passenger, submitToken *module.SubmitToken) {
+
+	data := make(url.Values)
+	data.Set("passengerTicketStr", "O,"+passenger.PassengerTicketStr)
+	data.Set("oldPassengerStr", passenger.OldPassengerStr)
+	data.Set("purpose_codes", submitToken.TicketInfo["purpose_codes"].(string))
+	data.Set("key_check_isChange", submitToken.TicketInfo["key_check_isChange"].(string))
+	data.Set("leftTicketStr", submitToken.TicketInfo["leftTicketStr"].(string))
+	data.Set("train_location", submitToken.TicketInfo["train_location"].(string))
+	data.Set("seatDetailType", "000")
 	data.Set("roomType", "00")
 	data.Set("dwAll", "N")
 	data.Set("whatsSelect", "1")
 	data.Set("_json_at", "")
 	data.Set("randCode", "")
-	data.Set("choose_seats", "")
-	data.Set("REPEAT_SUBMIT_TOKEN", passengerRes.SubmitToken.Token)
+	data.Set("choose_seats", "1D")
+	data.Set("REPEAT_SUBMIT_TOKEN", submitToken.Token)
 	fmt.Println(data)
 
 	qrImage := new(module.QrImage)
-	err := utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/otn/confirmPassenger/confirmSingleForQueue", qrImage)
+	err := utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/otn/confirmPassenger/confirmSingleForQueue", qrImage, map[string]string{"Referer": "https://kyfw.12306.cn/otn/confirmPassenger/initDc"})
 	if err != nil {
 		log.Panicln(err)
 	}
 }
 
-func AutoBuy(passengerRes *module.PassengerRes, trainData *module.TrainData) {
+func AutoBuy(passenger *module.Passenger, trainData *module.TrainData, submitToken *module.SubmitToken) {
 	//passengerTicketStr : 座位编号,0,票类型,乘客名,证件类型,证件号,手机号码,保存常用联系人(Y或N)
 	//oldPassengersStr: 乘客名,证件类型,证件号,乘客类型
 	var err error
 
 	data := make(url.Values)
 	data.Set("bed_level_order_num", "000000000000000000000000000000")
-	data.Set("passengerTicketStr", "O,"+passengerRes.Data.NormalPassengers[0].PassengerTicketStr)
-	data.Set("oldPassengerStr", passengerRes.Data.NormalPassengers[0].OldPassengerStr)
+	data.Set("passengerTicketStr", "O,"+passenger.PassengerTicketStr)
+	data.Set("oldPassengerStr", passenger.OldPassengerStr)
 	data.Set("tour_flag", "dc")
 	data.Set("cancel_flag", "2")
 	data.Set("purpose_codes", "ADULT")
-	data.Set("REPEAT_SUBMIT_TOKEN", passengerRes.SubmitToken.Token)
+	data.Set("REPEAT_SUBMIT_TOKEN", submitToken.Token)
 	data.Set("query_from_station_name", trainData.FromStation)
 	data.Set("query_to_station_name", trainData.ToStation)
 	data.Set("train_date", trainData.StartTime)
@@ -99,13 +115,13 @@ func AutoBuy(passengerRes *module.PassengerRes, trainData *module.TrainData) {
 	fmt.Println(data)
 
 	qrImage := new(module.AutoBuyRes)
-	err = utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/otn/confirmPassenger/autoSubmitOrderRequest", qrImage)
+	err = utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/otn/confirmPassenger/autoSubmitOrderRequest", qrImage, map[string]string{"Referer": "https://kyfw.12306.cn/otn/confirmPassenger/initDc"})
 	if err != nil {
 		log.Panicln(err)
 	}
 }
 
-func GetQueueCount(passengerRes *module.PassengerRes, trainData *module.TrainData, searchParam *module.SearchParam) *module.QueueCountRes {
+func GetQueueCount(submitToken *module.SubmitToken, trainData *module.TrainData, searchParam *module.SearchParam) *module.QueueCountRes {
 	var err error
 	startTime, err := time.Parse("2006-01-02", searchParam.TrainDate)
 	if err != nil {
@@ -113,19 +129,18 @@ func GetQueueCount(passengerRes *module.PassengerRes, trainData *module.TrainDat
 	}
 
 	data := make(url.Values)
-	data.Set("stationTrainCode", trainData.StationTrainCode)
+	data.Set("stationTrainCode", submitToken.TicketInfo["queryLeftTicketRequestDTO"].(map[string]interface{})["station_train_code"].(string))
 	data.Set("train_date", fmt.Sprintf("%s 00:00:00 GMT+0800 (中国标准时间)", startTime.Format("Mon Jan 02 2006 ")))
-	data.Set("train_no", trainData.TrainNo)
-	data.Set("seatType", "O")
-	data.Set("REPEAT_SUBMIT_TOKEN", passengerRes.SubmitToken.Token)
-	data.Set("fromStationTelecode", trainData.FromStation)
-	data.Set("toStationTelecode", trainData.ToStation)
-	data.Set("leftTicket", trainData.LeftTicket)
+	data.Set("train_no", submitToken.TicketInfo["queryLeftTicketRequestDTO"].(map[string]interface{})["train_no"].(string))
+	data.Set("seatType", "O") // 座位类型
+	data.Set("REPEAT_SUBMIT_TOKEN", submitToken.Token)
+	data.Set("fromStationTelecode", submitToken.TicketInfo["queryLeftTicketRequestDTO"].(map[string]interface{})["from_station"].(string))
+	data.Set("toStationTelecode", submitToken.TicketInfo["queryLeftTicketRequestDTO"].(map[string]interface{})["to_station"].(string))
+	data.Set("leftTicket", submitToken.TicketInfo["leftTicketStr"].(string))
 	data.Set("_json_att", "")
-	data.Set("purpose_codes", "00")
-	data.Set("train_location", "P2")
+	data.Set("purpose_codes", submitToken.TicketInfo["purpose_codes"].(string))
+	data.Set("train_location", submitToken.TicketInfo["train_location"].(string))
 	fmt.Println(data)
-
 
 	trainData.SecretStr, err = url.QueryUnescape(trainData.SecretStr)
 	if err != nil {
@@ -133,13 +148,11 @@ func GetQueueCount(passengerRes *module.PassengerRes, trainData *module.TrainDat
 	}
 	data.Set("secretStr", trainData.SecretStr)
 
-
 	queueRes := new(module.QueueCountRes)
-	err = utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/otn/confirmPassenger/getQueueCountAsync", queueRes)
+	err = utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/otn/confirmPassenger/getQueueCountAsync", queueRes, map[string]string{"Referer": "https://kyfw.12306.cn/otn/confirmPassenger/initDc"})
 	if err != nil {
 		log.Panicln(err)
 	}
 
 	return queueRes
 }
-

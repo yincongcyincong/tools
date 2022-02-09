@@ -85,7 +85,6 @@ func GetTrainInfo(searchParam *module.SearchParam) []*module.TrainData {
 		//	sd.TrainNo, sd.Status, sd.FromStationName, sd.ToStationName, sd.StatTime, sd.ArrivalTime, sd.DistanceTime))
 
 	}
-	fmt.Println(searchDatas[10])
 	return searchDatas
 }
 
@@ -113,8 +112,8 @@ func GetRepeatSubmitToken() {
 
 	ticketRes := TicketInfoRe.FindSubmatch(body)
 	if len(ticketRes) > 1 {
-		err = json.Unmarshal(ticketRes[1], &submitToken.TicketInfo)
 		ticketRes[1] = bytes.Replace(ticketRes[1], []byte("'"), []byte(`"`), -1)
+		err = json.Unmarshal(ticketRes[1], &submitToken.TicketInfo)
 		if err != nil {
 			log.Panicln(err)
 		}
@@ -128,16 +127,13 @@ func GetRepeatSubmitToken() {
 			log.Panicln(err)
 		}
 	}
+
+	loginUser.SubmitToken = submitToken
 }
 
 func GetPassengers() *module.PassengerRes {
 
-	// submit token 需要一样
-	if utils.GetCookie().Cookie["submit_token"] != "" {
-		submitToken.Token = utils.GetCookie().Cookie["submit_token"]
-	}
-
-	if submitToken.Token == "" {
+	if loginUser.SubmitToken == nil {
 		GetRepeatSubmitToken()
 		if submitToken.Token == "" {
 			log.Panicln("submitToken is empty")
@@ -148,7 +144,7 @@ func GetPassengers() *module.PassengerRes {
 	data.Set("_json_att", "")
 	data.Set("REPEAT_SUBMIT_TOKEN", submitToken.Token)
 	res := new(module.PassengerRes)
-	err := utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/otn/confirmPassenger/getPassengerDTOs", res)
+	err := utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/otn/confirmPassenger/getPassengerDTOs", res, nil)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -180,7 +176,7 @@ func CheckUser() {
 	data.Set("_json_att", "")
 	res := new(module.CheckUserRes)
 	fmt.Println(utils.GetCookieStr())
-	err := utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/otn/login/checkUser", res)
+	err := utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/otn/login/checkUser", res, nil)
 	if err != nil {
 		log.Panicln(err)
 	}
