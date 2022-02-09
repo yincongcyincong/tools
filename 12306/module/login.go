@@ -46,4 +46,6 @@ type LoginUser struct {
 	UserRes     *UserRes
 	ApiRes      *ApiRes
 	SubmitToken *SubmitToken
+	Passenger   *Passenger
+	TrainData   *TrainData
 }

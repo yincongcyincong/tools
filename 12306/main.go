@@ -17,11 +17,15 @@ func main() {
 	http.HandleFunc("/repeat", GetRepeatToken)
 	http.HandleFunc("/passenger", GetPassenger)
 	http.HandleFunc("/buy", StartBuy)
+	http.HandleFunc("/check-order", CheckOrderReq)
 	http.HandleFunc("/test-reg", Test)
+	http.HandleFunc("/re-login", ReLogin)
 	http.ListenAndServe("127.0.0.1:8000", nil)
 }
 
 func UserLogin(w http.ResponseWriter, r *http.Request) {
+	body, _ := ioutil.ReadAll(r.Body)
+	utils.AddCookieStr([]string{string(body)})
 	QrLogin()
 }
 
@@ -103,20 +107,39 @@ func StartBuy(w http.ResponseWriter, r *http.Request) {
 
 	passenger := GetPassengers()
 
+	loginUser.Passenger = passenger.Data.NormalPassengers[0]
+	loginUser.TrainData = trainData
 
-	checkOrderRes := CheckOrder(passenger.Data.NormalPassengers[0], passenger.SubmitToken)
-	fmt.Println(fmt.Sprintf("%+v", checkOrderRes))
-	if !checkOrderRes.Data.SubmitStatus {
-		log.Panicln("error", checkOrderRes)
-	}
+	fmt.Fprint(w, "success")
 
-	queueRes := GetQueueCount(passenger.SubmitToken, trainData, searchParam)
-	fmt.Println(fmt.Sprintf("%+v", queueRes))
 	//AutoBuy(passenger, trainDatas[10])
 
 }
 
 func Test(w http.ResponseWriter, r *http.Request) {
+
+
+
+}
+
+func CheckOrderReq(w http.ResponseWriter, r *http.Request) {
+	// 高频率请求会直接失败，也可能是两次登陆导致的，长时间不请求cookie会失效， todo 怎么搞到能用的cookie
+	searchParam := &module.SearchParam{
+		TrainDate:   "2022-02-17",
+		FromStation: "BJP",
+		ToStation:   "TJP",
+	}
+	checkOrderRes := CheckOrder(loginUser.Passenger, loginUser.SubmitToken)
+	fmt.Println(fmt.Sprintf("%+v", checkOrderRes))
+	if !checkOrderRes.Data.SubmitStatus {
+		log.Panicln("error", checkOrderRes)
+	}
+
+	queueRes := GetQueueCount(loginUser.SubmitToken, loginUser.TrainData, searchParam)
+	fmt.Println(fmt.Sprintf("%+v", queueRes))
+}
+
+func ReLogin(w http.ResponseWriter, r *http.Request) {
 	loginUser.SubmitToken = nil
 	GetLoginData()
 }

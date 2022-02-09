@@ -144,7 +144,7 @@ func GetPassengers() *module.PassengerRes {
 	data.Set("_json_att", "")
 	data.Set("REPEAT_SUBMIT_TOKEN", submitToken.Token)
 	res := new(module.PassengerRes)
-	err := utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/otn/confirmPassenger/getPassengerDTOs", res, nil)
+	err := utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/otn/confirmPassenger/getPassengerDTOs", res, nil)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -164,7 +164,6 @@ func GetPassengers() *module.PassengerRes {
 	}
 
 	res.SubmitToken = submitToken
-	fmt.Println(submitToken.Token, utils.GetCookieStr())
 	fmt.Println(fmt.Sprintf("%+v", res))
 
 	return res
@@ -175,8 +174,7 @@ func CheckUser() {
 	data := make(url.Values)
 	data.Set("_json_att", "")
 	res := new(module.CheckUserRes)
-	fmt.Println(utils.GetCookieStr())
-	err := utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/otn/login/checkUser", res, nil)
+	err := utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/otn/login/checkUser", res, nil)
 	if err != nil {
 		log.Panicln(err)
 	}

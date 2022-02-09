@@ -7,7 +7,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 )
@@ -20,7 +19,7 @@ func GetClient() *http.Client {
 			Transport: &http.Transport{
 				DialContext: (&net.Dialer{
 					Timeout:   5 * time.Second,
-					KeepAlive: 5 * time.Second,
+					KeepAlive: 1 * time.Minute,
 				}).DialContext,
 				TLSHandshakeTimeout:   5 * time.Second,
 				ResponseHeaderTimeout: 5 * time.Second,
@@ -34,15 +33,15 @@ func GetClient() *http.Client {
 
 }
 
-func Request(data url.Values, cookieStr, url string, res interface{}, headers map[string]string) error {
+func Request(data string, cookieStr, url string, res interface{}, headers map[string]string) error {
 
-	req, err := http.NewRequest("POST", url, strings.NewReader(data.Encode()))
+	req, err := http.NewRequest("POST", url, strings.NewReader(data))
 	if err != nil {
 		return err
 	}
 	req.Header.Set("Cookie", cookieStr)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.80 Safari/537.36")
 	req.Header.Set("Host", "kyfw.12306.cn")
 	req.Header.Set("X-Requested-With", "XMLHttpRequest")
 	req.Header.Set("Origin", "https://kyfw.12306.cn")

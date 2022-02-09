@@ -35,7 +35,7 @@ func QrLogin() {
 	data := make(url.Values)
 	data.Set("appid", "otn")
 	qrImage := new(module.QrImage)
-	err = utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/passport/web/create-qr64", qrImage, nil)
+	err = utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/passport/web/create-qr64", qrImage, nil)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -55,7 +55,7 @@ func QrLogin() {
 	data.Set("RAIL_EXPIRATION", utils.GetCookie().Cookie["RAIL_EXPIRATION"])
 	qrRes := new(module.QrRes)
 	for i := 0; i < 100; i++ {
-		err = utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/passport/web/checkqr", qrRes, nil)
+		err = utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/passport/web/checkqr", qrRes, nil)
 		if err == nil && qrRes.ResultCode == "2" {
 			break
 		} else {
@@ -68,7 +68,7 @@ func QrLogin() {
 	// 验证信息，获取tk
 	tk := new(module.TkRes)
 	utils.GetCookie().Cookie["uamtk"] = qrRes.Uamtk
-	err = utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/passport/web/auth/uamtk", tk, nil)
+	err = utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/passport/web/auth/uamtk", tk, nil)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -88,7 +88,7 @@ func GetLoginData() {
 	userRes := new(module.UserRes)
 	data.Set("tk", loginUser.TkRes.Newapptk)
 	utils.GetCookie().Cookie["tk"] = loginUser.TkRes.Newapptk
-	err := utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/otn/uamauthclient", userRes, nil)
+	err := utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/otn/uamauthclient", userRes, nil)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -97,7 +97,7 @@ func GetLoginData() {
 	}
 
 	apiRes := new(module.ApiRes)
-	err = utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/otn/index/initMy12306Api", apiRes, nil)
+	err = utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/otn/index/initMy12306Api", apiRes, nil)
 	if err != nil {
 		log.Panicln(err)
 	}
