@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/tools/12306/conf"
 	"github.com/tools/12306/module"
 	"github.com/tools/12306/utils"
 	"io/ioutil"
@@ -68,21 +69,19 @@ func GetTrainInfo(searchParam *module.SearchParam) []*module.TrainData {
 			sd.DistanceTime = resSlice[10]
 
 			sd.SeatInfo = make(map[string]string)
-			sd.SeatInfo["商务座"] = resSlice[32]
-			sd.SeatInfo["一等座"] = resSlice[31]
-			sd.SeatInfo["二等座"] = resSlice[30]
-			sd.SeatInfo["软卧"] = resSlice[23]
-			sd.SeatInfo["硬卧"] = resSlice[28]
-			sd.SeatInfo["硬座"] = resSlice[29]
-			sd.SeatInfo["无座"] = resSlice[26]
-			sd.SeatInfo["动卧"] = resSlice[33]
+			sd.SeatInfo["特等座"] = resSlice[conf.SeatType["特等座"]]
+			sd.SeatInfo["商务座"] = resSlice[conf.SeatType["商务座"]]
+			sd.SeatInfo["一等座"] = resSlice[conf.SeatType["一等座"]]
+			sd.SeatInfo["二等座"] = resSlice[conf.SeatType["二等座"]]
+			sd.SeatInfo["软卧"] = resSlice[conf.SeatType["软卧"]]
+			sd.SeatInfo["硬卧"] = resSlice[conf.SeatType["硬卧"]]
+			sd.SeatInfo["硬座"] = resSlice[conf.SeatType["硬座"]]
+			sd.SeatInfo["无座"] = resSlice[conf.SeatType["无座"]]
+			sd.SeatInfo["动卧"] = resSlice[conf.SeatType["动卧"]]
+			sd.SeatInfo["软座"] = resSlice[conf.SeatType["软座"]]
 		}
 
 		searchDatas[i] = sd
-
-		//fmt.Println(fmt.Sprintf("车次: %s, 状态: %s, 始发车站: %s, 终点站:%s,  %s: %s, 历时：%s",
-		//	sd.TrainNo, sd.Status, sd.FromStationName, sd.ToStationName, sd.StatTime, sd.ArrivalTime, sd.DistanceTime))
-
 	}
 	return searchDatas
 }

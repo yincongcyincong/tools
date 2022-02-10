@@ -51,8 +51,8 @@ func QrLogin() {
 
 	// 扫描二维码
 	data.Set("uuid", qrImage.Uuid)
-	data.Set("RAIL_DEVICEID", utils.GetCookie().Cookie["RAIL_DEVICEID"])
-	data.Set("RAIL_EXPIRATION", utils.GetCookie().Cookie["RAIL_EXPIRATION"])
+	data.Set("RAIL_DEVICEID", utils.GetCookieVal("RAIL_DEVICEID"))
+	data.Set("RAIL_EXPIRATION", utils.GetCookieVal("RAIL_EXPIRATION"))
 	qrRes := new(module.QrRes)
 	for i := 0; i < 100; i++ {
 		err = utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/passport/web/checkqr", qrRes, nil)
@@ -67,7 +67,7 @@ func QrLogin() {
 
 	// 验证信息，获取tk
 	tk := new(module.TkRes)
-	utils.GetCookie().Cookie["uamtk"] = qrRes.Uamtk
+	utils.AddCookie(map[string]string{"uamtk": qrRes.Uamtk})
 	err = utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/passport/web/auth/uamtk", tk, nil)
 	if err != nil {
 		log.Panicln(err)
@@ -86,7 +86,7 @@ func GetLoginData() {
 	// 获取用户信息
 	userRes := new(module.UserRes)
 	data.Set("tk", loginUser.TkRes.Newapptk)
-	utils.GetCookie().Cookie["tk"] = loginUser.TkRes.Newapptk
+	utils.AddCookie(map[string]string{"tk": loginUser.TkRes.Newapptk})
 	err := utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/otn/uamauthclient", userRes, nil)
 	if err != nil {
 		log.Panicln(err)

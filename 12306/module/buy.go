@@ -48,14 +48,16 @@ type CheckOrderRes struct {
 }
 
 type ConfirmQueueRes struct {
-	ValidateMessagesShowId string   `json:"validateMessagesShowId"`
-	Status                 bool     `json:"status"`
-	HTTPStatus             int      `json:"httpstatus"`
-	Messages               []string `json:"messages"`
-	Data                   struct {
-		IsAsync      string `json:"isAsync"`
-		SubmitStatus bool   `json:"submitStatus"`
-	} `json:"data"`
+	ValidateMessagesShowId string      `json:"validateMessagesShowId"`
+	Status                 bool        `json:"status"`
+	HTTPStatus             int         `json:"httpstatus"`
+	Messages               []string    `json:"messages"`
+	Data                   interface{} `json:"data"`
+}
+
+type ConfirmData struct {
+	IsAsync      string `json:"isAsync"`
+	SubmitStatus bool   `json:"submitStatus"`
 }
 
 type OrderWaitRes struct {

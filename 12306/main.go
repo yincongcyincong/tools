@@ -31,10 +31,6 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserLogout(w http.ResponseWriter, r *http.Request) {
-	if len(utils.GetCookie().Cookie) == 2 {
-		body, _ := ioutil.ReadAll(r.Body)
-		utils.AddCookieStr([]string{string(body)})
-	}
 	LoginOut()
 }
 
@@ -44,29 +40,17 @@ func SearchTrain(w http.ResponseWriter, r *http.Request) {
 		FromStation: "BJP",
 		ToStation:   "TJP",
 	}
-	if len(utils.GetCookie().Cookie) == 2 {
-		body, _ := ioutil.ReadAll(r.Body)
-		utils.AddCookieStr([]string{string(body)})
-	}
 
 	GetTrainInfo(searchParam)
 }
 
 func GetRepeatToken(w http.ResponseWriter, r *http.Request) {
 
-	if len(utils.GetCookie().Cookie) == 2 {
-		body, _ := ioutil.ReadAll(r.Body)
-		utils.AddCookieStr([]string{string(body)})
-	}
 	GetRepeatSubmitToken()
 }
 
 func GetPassenger(w http.ResponseWriter, r *http.Request) {
 
-	if len(utils.GetCookie().Cookie) == 2 {
-		body, _ := ioutil.ReadAll(r.Body)
-		utils.AddCookieStr([]string{string(body)})
-	}
 
 	if loginUser.SubmitToken == nil || loginUser.SubmitToken.Token == "" {
 		GetRepeatSubmitToken()
@@ -120,10 +104,13 @@ func StartBuy(w http.ResponseWriter, r *http.Request) {
 	submitOrderRes := SubmitOrder(trainData, searchParam)
 	fmt.Println(fmt.Sprintf("%+v", submitOrderRes))
 
-	GetRepeatSubmitToken()
-	if loginUser.SubmitToken.Token == "" {
-		log.Panicln("submitToken is empty")
+	if loginUser.SubmitToken == nil || loginUser.SubmitToken.Token == "" {
+		GetRepeatSubmitToken()
+		if loginUser.SubmitToken.Token == "" {
+			log.Panicln("submitToken is empty")
+		}
 	}
+
 	passenger := GetPassengers()
 
 	loginUser.Passenger = passenger.Data.NormalPassengers[0]
@@ -134,6 +121,7 @@ func StartBuy(w http.ResponseWriter, r *http.Request) {
 	if !checkOrderRes.Data.SubmitStatus {
 		log.Panicln("error", checkOrderRes)
 	}
+
 
 	queueRes := GetQueueCount(loginUser.SubmitToken, loginUser.TrainData, searchParam)
 	fmt.Println(fmt.Sprintf("%+v", queueRes))
