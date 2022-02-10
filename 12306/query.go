@@ -25,27 +25,9 @@ var (
 func GetTrainInfo(searchParam *module.SearchParam) ([]*module.TrainData, error) {
 
 	var err error
-	req, err := http.NewRequest("GET", fmt.Sprintf("https://kyfw.12306.cn/otn/leftTicket/queryA?leftTicketDTO.train_date=%s&leftTicketDTO.from_station=%s&leftTicketDTO.to_station=%s&purpose_codes=ADULT", searchParam.TrainDate, searchParam.FromStation, searchParam.ToStation), strings.NewReader(""))
-	if err != nil {
-		seelog.Error(err)
-		return nil, err
-	}
-
-	req.Header.Set("Cookie", utils.GetCookieStr())
-
-	resp, err := utils.GetClient().Do(req)
-	if err != nil {
-		seelog.Error(err)
-		return nil, err
-	}
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		seelog.Error(err)
-		return nil, err
-	}
-
 	searchRes := new(module.TrainRes)
-	err = json.Unmarshal(body, searchRes)
+	err = utils.RequestGet(utils.GetCookieStr(), fmt.Sprintf("https://kyfw.12306.cn/otn/leftTicket/queryA?leftTicketDTO.train_date=%s&leftTicketDTO.from_station=%s&leftTicketDTO.to_station=%s&purpose_codes=ADULT",
+		searchParam.TrainDate, searchParam.FromStation, searchParam.ToStation),searchRes, nil )
 	if err != nil {
 		seelog.Error(err)
 		return nil, err

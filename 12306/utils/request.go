@@ -70,7 +70,7 @@ func Request(data string, cookieStr, url string, res interface{}, headers map[st
 	setCookies := resp.Header.Values("Set-Cookie")
 	AddCookieStr(setCookies)
 
-	seelog.Tracef("url: %v, response: %v", url, string(respBody))
+	seelog.Tracef("url: %v, param: %v, response: %v", url, data, string(respBody))
 
 	return nil
 }
@@ -110,9 +110,7 @@ func RequestGet(cookieStr, url string, res interface{}, headers map[string]strin
 	setCookies := resp.Header.Values("Set-Cookie")
 	AddCookieStr(setCookies)
 
-	if strings.Contains(url, "queryOrderWaitTime") {
-		fmt.Println(url, string(respBody))
-	}
+	seelog.Tracef("url: %v, response: %v", url, string(respBody))
 
 	return nil
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/cihub/seelog"
 	"github.com/tools/12306/conf"
 	"github.com/tools/12306/module"
@@ -26,14 +27,14 @@ func init() {
 }
 
 func main() {
-
 	http.HandleFunc("/create-image", CreateImageReq)
 	http.HandleFunc("/login", QrLoginReq)
 	http.HandleFunc("/logout", UserLogoutReq)
 	http.HandleFunc("/search-train", SearchTrain)
 	http.HandleFunc("/search-info", SearchInfo)
 	http.HandleFunc("/order", StartOrderReq)
-	http.Handle("/image", http.StripPrefix("/image", http.FileServer(http.Dir("./image/"))))
+	http.HandleFunc("/login-process", LoginProcess)
+	http.HandleFunc("/re-login", ReLogin)
 	if err := http.ListenAndServe(":8000", nil); err != nil {
 		log.Panicln(err)
 	}
@@ -45,7 +46,6 @@ func CreateImageReq(w http.ResponseWriter, r *http.Request) {
 		utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
 		return
 	}
-	qrImage.Image = ""
 	utils.HTTPSuccResp(w, qrImage)
 }
 
@@ -111,8 +111,6 @@ func SearchTrain(w http.ResponseWriter, r *http.Request) {
 
 	utils.HTTPSuccResp(w, res)
 }
-
-
 
 func StartOrderReq(w http.ResponseWriter, r *http.Request) {
 	orderParam := new(module.OrderParam)
@@ -185,3 +183,51 @@ func StartOrderReq(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func ReLogin(w http.ResponseWriter, r *http.Request) {
+	GetLoginData()
+}
+
+func LoginProcess(w http.ResponseWriter, r *http.Request) {
+	qrImage, err := CreateImage()
+	if err != nil {
+		utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
+		return
+	}
+	qrImage.Image = ""
+
+	err = QrLogin(qrImage)
+	if err != nil {
+		utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
+		return
+	}
+
+	submitToken, err := GetRepeatSubmitToken()
+	if err != nil {
+		utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
+		return
+	}
+
+	passengers, err := GetPassengers(submitToken)
+	if err != nil {
+		utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
+		return
+	}
+	fmt.Println(passengers)
+
+	searchParam := &module.SearchParam{
+		TrainDate:       "2022-02-17",
+		FromStation:     "BJP",
+		ToStation:       "TJP",
+		FromStationName: "北京",
+		ToStationName:   "天津",
+		SeatType:        "O",
+	}
+	res, err := GetTrainInfo(searchParam)
+	if err != nil {
+		utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
+		return
+	}
+	fmt.Println(res)
+
+	utils.HTTPSuccResp(w, "")
+}

@@ -50,3 +50,24 @@ type LoginUser struct {
 	TrainData   *TrainData
 	BuyStatus   int
 }
+
+type InitConfRes struct {
+	ValidateMessagesShowId string `json:"validateMessagesShowId"`
+	Status                 bool   `json:"status"`
+	HTTPStatus             int    `json:"httpstatus"`
+	Data                   struct {
+		IsstudentData     bool     `json:"isstudentDate"`
+		IsMessagePassCode string   `json:"is_message_passCode"`
+		StudentDate       []string `json:"studentDate"`
+		IsUamLogin        string   `json:"is_uam_login"`
+		IsLoginPassCode   string   `json:"is_login_passCode"`
+		IsSweepLogin      string   `json:"is_sweep_login"`
+		QueryUrl          string   `json:"queryUrl"`
+		Now               int      `json:"now"`
+		IsLogin           string   `json:"is_login"`
+		LoginUrl          string   `json:"login_url"`
+		StuControl        int      `json:"stu_control"`
+		OtherControl      int      `json:"other_control"`
+	} `json:"data"`
+	Messages []string `json:"messages"`
+}

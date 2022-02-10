@@ -81,21 +81,9 @@ func QrLogin(qrImage *module.QrImage) error {
 		seelog.Error(err)
 		return err
 	}
-
-	// 验证信息，获取tk
-	tk := new(module.TkRes)
 	utils.AddCookie(map[string]string{"uamtk": qrRes.Uamtk})
-	err = utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/passport/web/auth/uamtk", tk, nil)
-	if err != nil {
-		seelog.Error(err)
-		return err
-	}
-	if tk.ResultCode != 0 {
-		seelog.Errorf("uamtk fail: %+v", tk)
-		return errors.New("uamtk fail")
-	}
 
-	err = GetLoginData(tk)
+	err = GetLoginData()
 	if err != nil {
 		seelog.Error(err)
 		return err
@@ -104,14 +92,28 @@ func QrLogin(qrImage *module.QrImage) error {
 	return nil
 }
 
-func GetLoginData(tk *module.TkRes) error {
-	utils.AddCookie(map[string]string{"tk": tk.Newapptk})
+func GetLoginData() error {
 
+	// 验证信息，获取tk
 	data := make(url.Values)
 	data.Set("appid", "otn")
-	data.Set("tk", tk.Newapptk)
+
+	tk := new(module.TkRes)
+	err := utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/passport/web/auth/uamtk", tk, nil)
+	if err != nil {
+		seelog.Error(err)
+		return err
+	}
+	if tk.ResultCode != 0 {
+		seelog.Errorf("uamtk fail: %+v", tk)
+		return errors.New("uamtk fail")
+	}
+	utils.AddCookie(map[string]string{"tk": tk.Newapptk})
+
+	// 通过tk校验
+	data.Set("tk", utils.GetCookieVal("tk"))
 	userRes := new(module.UserRes)
-	err := utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/otn/uamauthclient", userRes, nil)
+	err = utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/otn/uamauthclient", userRes, nil)
 	if err != nil {
 		seelog.Error(err)
 		return err
@@ -121,6 +123,7 @@ func GetLoginData(tk *module.TkRes) error {
 		return errors.New(userRes.ResultMessage)
 	}
 
+	// 初始化api
 	apiRes := new(module.ApiRes)
 	err = utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/otn/index/initMy12306Api", apiRes, nil)
 	if err != nil {
@@ -131,7 +134,12 @@ func GetLoginData(tk *module.TkRes) error {
 		seelog.Errorf("initMy12306Api fail: %+v", apiRes)
 		return errors.New("initMy12306Api fail")
 	}
+	seelog.Infof("%s 登陆成功", apiRes.Data["user_name"])
 
+	// todo 需要init conf
+
+
+	// 获取特殊cookie字段
 	staticTk := new(module.TkRes)
 	err = utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/passport/web/auth/uamtk-static", staticTk, nil)
 	if err != nil {
