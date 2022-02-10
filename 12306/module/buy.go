@@ -54,7 +54,33 @@ type ConfirmQueueRes struct {
 	Messages               []string `json:"messages"`
 	Data                   struct {
 		IsAsync      string `json:"isAsync"`
-		SubmitStatus string `json:"submitStatus"`
+		SubmitStatus bool   `json:"submitStatus"`
+	} `json:"data"`
+}
+
+type OrderWaitRes struct {
+	ValidateMessagesShowId string   `json:"validateMessagesShowId"`
+	Status                 bool     `json:"status"`
+	HTTPStatus             int      `json:"httpstatus"`
+	Messages               []string `json:"messages"`
+	Data                   struct {
+		QueryOrderWaitTimeStatus bool   `json:"queryOrderWaitTimeStatus"`
+		Count                    int    `json:"count"`
+		WaitTime                 int    `json:"waitTime"`
+		RequestId                int    `json:"requestId"`
+		WaitCount                int    `json:"WaitCount"`
+		TourFlag                 string `json:"tourFlag"`
+		OrderId                  string `json:"orderId"`
+	} `json:"data"`
+}
+
+type OrderResultRes struct {
+	ValidateMessagesShowId string   `json:"validateMessagesShowId"`
+	Status                 bool     `json:"status"`
+	HTTPStatus             int      `json:"httpstatus"`
+	Messages               []string `json:"messages"`
+	Data                   struct {
+		SubmitStatus bool `json:"submitStatus"`
 	} `json:"data"`
 }
 

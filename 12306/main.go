@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"time"
 )
 
 func main() {
@@ -67,6 +68,13 @@ func GetPassenger(w http.ResponseWriter, r *http.Request) {
 		utils.AddCookieStr([]string{string(body)})
 	}
 
+	if loginUser.SubmitToken == nil || loginUser.SubmitToken.Token == "" {
+		GetRepeatSubmitToken()
+		if loginUser.SubmitToken.Token == "" {
+			log.Panicln("submitToken is empty")
+		}
+	}
+
 	GetPassengers()
 
 	//body, _ := ioutil.ReadAll(r.Body)
@@ -82,10 +90,16 @@ func GetPassenger(w http.ResponseWriter, r *http.Request) {
 
 func StartBuy(w http.ResponseWriter, r *http.Request) {
 
-	if len(utils.GetCookie().Cookie) == 2 {
-		body, _ := ioutil.ReadAll(r.Body)
-		utils.AddCookieStr([]string{string(body)})
+	if loginUser.BuyStatus == 1 {
+		fmt.Fprint(w, "is buying")
+		return
 	}
+	loginUser.BuyStatus = 1
+	defer func() {
+		loginUser.BuyStatus = 0
+		loginUser.SubmitToken = new(module.SubmitToken)
+	}()
+
 	searchParam := &module.SearchParam{
 		TrainDate:   "2022-02-17",
 		FromStation: "BJP",
@@ -102,23 +116,47 @@ func StartBuy(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(fmt.Sprintf("%+v", trainData))
 
 	CheckUser()
+
 	submitOrderRes := SubmitOrder(trainData, searchParam)
 	fmt.Println(fmt.Sprintf("%+v", submitOrderRes))
 
+	GetRepeatSubmitToken()
+	if loginUser.SubmitToken.Token == "" {
+		log.Panicln("submitToken is empty")
+	}
 	passenger := GetPassengers()
 
 	loginUser.Passenger = passenger.Data.NormalPassengers[0]
 	loginUser.TrainData = trainData
 
-	fmt.Fprint(w, "success")
+	checkOrderRes := CheckOrder(loginUser.Passenger, loginUser.SubmitToken)
+	fmt.Println(fmt.Sprintf("%+v", checkOrderRes))
+	if !checkOrderRes.Data.SubmitStatus {
+		log.Panicln("error", checkOrderRes)
+	}
 
-	//AutoBuy(passenger, trainDatas[10])
+	queueRes := GetQueueCount(loginUser.SubmitToken, loginUser.TrainData, searchParam)
+	fmt.Println(fmt.Sprintf("%+v", queueRes))
+
+	confirmRes := ConfirmQueue(loginUser.Passenger, loginUser.SubmitToken)
+	fmt.Println(fmt.Sprintf("%+v", confirmRes))
+
+	for i := 0; i < 100; i++ {
+		orderRes := OrderWait(loginUser.SubmitToken)
+		fmt.Println(fmt.Sprintf("%+v", orderRes))
+		if orderRes.Data.OrderId != "" {
+			break
+		}
+
+		time.Sleep(3 * time.Second)
+	}
+
+	OrderResult(loginUser.SubmitToken)
+
 
 }
 
 func Test(w http.ResponseWriter, r *http.Request) {
-
-
 
 }
 

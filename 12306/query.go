@@ -18,7 +18,6 @@ var (
 	TokenRe           = regexp.MustCompile("var globalRepeatSubmitToken = '(.+)';")
 	TicketInfoRe      = regexp.MustCompile("var ticketInfoForPassengerForm=(.+);")
 	OrderRequestParam = regexp.MustCompile("var orderRequestDTO=(.+);")
-	submitToken       = new(module.SubmitToken)
 )
 
 func GetTrainInfo(searchParam *module.SearchParam) []*module.TrainData {
@@ -106,6 +105,7 @@ func GetRepeatSubmitToken() {
 	}
 
 	matchRes := TokenRe.FindStringSubmatch(string(body))
+	submitToken := new(module.SubmitToken)
 	if len(matchRes) > 1 {
 		submitToken.Token = matchRes[1]
 	}
@@ -133,16 +133,9 @@ func GetRepeatSubmitToken() {
 
 func GetPassengers() *module.PassengerRes {
 
-	if loginUser.SubmitToken == nil {
-		GetRepeatSubmitToken()
-		if submitToken.Token == "" {
-			log.Panicln("submitToken is empty")
-		}
-	}
-
 	data := make(url.Values)
 	data.Set("_json_att", "")
-	data.Set("REPEAT_SUBMIT_TOKEN", submitToken.Token)
+	data.Set("REPEAT_SUBMIT_TOKEN", loginUser.SubmitToken.Token)
 	res := new(module.PassengerRes)
 	err := utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/otn/confirmPassenger/getPassengerDTOs", res, nil)
 	if err != nil {
@@ -154,7 +147,6 @@ func GetPassengers() *module.PassengerRes {
 	}
 
 	for _, p := range res.Data.NormalPassengers {
-
 		passengerTicketStr := fmt.Sprintf("0,%s,%s,%s,%s,%s,N,%s",
 			p.PassengerType, p.PassengerName, p.PassengerIdTypeCode, p.PassengerIdNo, p.MobileNo, p.AllEncStr)
 		oldPassengerStr := fmt.Sprintf("%s,%s,%s,%s_",
@@ -163,7 +155,6 @@ func GetPassengers() *module.PassengerRes {
 		p.OldPassengerStr = oldPassengerStr
 	}
 
-	res.SubmitToken = submitToken
 	fmt.Println(fmt.Sprintf("%+v", res))
 
 	return res

@@ -47,7 +47,6 @@ type PassengerRes struct {
 		NormalPassengers []*Passenger `json:"normal_passengers"`
 	} `json:"data"`
 	Messages    []string `json:"messages"`
-	SubmitToken *SubmitToken
 }
 
 type Passenger struct {

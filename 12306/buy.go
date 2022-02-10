@@ -53,10 +53,42 @@ func CheckOrder(passenger *module.Passenger, submitToken *module.SubmitToken) *m
 	return checkOrderRes
 }
 
-func ConfirmQueue(passenger *module.Passenger, submitToken *module.SubmitToken) {
+func OrderResult(submitToken *module.SubmitToken) *module.OrderResultRes {
 
 	// url encode需要小心，会多处理
-	data := fmt.Sprintf("passengerTicketStr=%s&oldPassengerStr=%s&purpose_codes=%s&key_check_isChange=%s&leftTicketStr=%s&train_location=%s&seatDetailType=000&roomType=00&whatsSelecte=1&dwAll=N&_json_at=&rand_code=&choose_seats=1D&REPEAT_SUBMIT_TOKEN=%s",
+	var err error
+	data := make(url.Values)
+	data.Set("orderSequence_no", "")
+	data.Set("REPEAT_SUBMIT_TOKEN", submitToken.Token)
+	data.Set("json_att", "")
+
+	orderRes := new(module.OrderResultRes)
+	err = utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/otn/confirmPassenger/resultOrderForDcQueue", orderRes, map[string]string{"Referer": "https://kyfw.12306.cn/otn/confirmPassenger/initDc"})
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	return orderRes
+}
+
+func OrderWait(submitToken *module.SubmitToken) *module.OrderWaitRes {
+
+	// url encode需要小心，会多处理
+	var err error
+	orderWaitUrl := fmt.Sprintf("https://kyfw.12306.cn/otn/confirmPassenger/queryOrderWaitTime?random=%s&tourFlag=dc&_json_att=&REPEAT_SUBMIT_TOKEN=%s", "16442323111232", submitToken.Token)
+	orderWaitRes := new(module.OrderWaitRes)
+	err = utils.RequestGet(utils.GetCookieStr(), orderWaitUrl, orderWaitRes, map[string]string{"Referer": "https://kyfw.12306.cn/otn/confirmPassenger/initDc"})
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	return orderWaitRes
+}
+
+func ConfirmQueue(passenger *module.Passenger, submitToken *module.SubmitToken) *module.ConfirmQueueRes {
+
+	// url encode需要小心，会多处理
+	data := fmt.Sprintf("passengerTicketStr=%s&oldPassengerStr=%s&purpose_codes=%s&key_check_isChange=%s&leftTicketStr=%s&train_location=%s&seatDetailType=000&roomType=00&whatsSelecte=1&dwAll=N&_json_at=&randCode=&choose_seats=1D&REPEAT_SUBMIT_TOKEN=%s&is_jy=N&is_cj=Y&encryptedData=%s",
 		strings.Replace(url.QueryEscape("O,"+passenger.PassengerTicketStr), "%2A", "*", -1), strings.Replace(url.QueryEscape(passenger.OldPassengerStr), "%2A", "*", -1),
 		submitToken.TicketInfo["purpose_codes"].(string), submitToken.TicketInfo["key_check_isChange"].(string), submitToken.TicketInfo["leftTicketStr"].(string), submitToken.TicketInfo["train_location"].(string), submitToken.Token)
 	fmt.Println(data)
@@ -66,6 +98,8 @@ func ConfirmQueue(passenger *module.Passenger, submitToken *module.SubmitToken) 
 	if err != nil {
 		log.Panicln(err)
 	}
+
+	return confirmQueue
 }
 
 func GetQueueCount(submitToken *module.SubmitToken, trainData *module.TrainData, searchParam *module.SearchParam) *module.QueueCountRes {

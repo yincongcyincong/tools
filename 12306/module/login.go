@@ -48,4 +48,5 @@ type LoginUser struct {
 	SubmitToken *SubmitToken
 	Passenger   *Passenger
 	TrainData   *TrainData
+	BuyStatus   int
 }
