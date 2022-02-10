@@ -21,7 +21,7 @@ type TrainData struct {
 	TrainLocation    string
 	StationTrainCode string
 	LeftTicket       string
-	StartTime         string
+	StartTime        string
 	ArrivalTime      string
 	DistanceTime     string
 	Status           string
@@ -29,9 +29,12 @@ type TrainData struct {
 }
 
 type SearchParam struct {
-	TrainDate   string
-	FromStation string
-	ToStation   string
+	TrainDate       string `json:"train_date"`
+	FromStation     string `json:"from_station"`
+	ToStation       string `json:"to_station"`
+	FromStationName string `json:"from_station_name"`
+	ToStationName   string `json:"to_station_name"`
+	SeatType        string `json:"seat_type"`
 }
 
 type PassengerRes struct {
@@ -46,7 +49,7 @@ type PassengerRes struct {
 		OtherIsOpenClick []string     `json:"other_isOpenClick"`
 		NormalPassengers []*Passenger `json:"normal_passengers"`
 	} `json:"data"`
-	Messages    []string `json:"messages"`
+	Messages []string `json:"messages"`
 }
 
 type Passenger struct {
@@ -97,4 +100,17 @@ type CheckUserRes struct {
 		Flag bool `json:"flag"`
 	} `json:"data"`
 	Messages []string `json:"messages"`
+}
+
+type SearchInfo struct {
+	PassengerType map[string]string
+	OrderSeatType map[string]string
+	Station       map[string]string
+	Passengers    []*Passenger
+}
+
+type OrderParam struct {
+	TrainData   *TrainData
+	Passengers  []*Passenger
+	SearchParam *SearchParam
 }

@@ -2,7 +2,8 @@ package main
 
 import (
 	"encoding/base64"
-	"fmt"
+	"errors"
+	"github.com/cihub/seelog"
 	"github.com/tools/12306/module"
 	"github.com/tools/12306/utils"
 	"io/fs"
@@ -10,25 +11,22 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 )
 
-var loginUser *module.LoginUser
-
-func init() {
-	loginUser = new(module.LoginUser)
-}
-
-func QrLogin() {
+func CreateImage() (*module.QrImage, error) {
 	initReq, err := http.NewRequest("GET", "https://kyfw.12306.cn/otn/login/init", strings.NewReader(""))
 	if err != nil {
-		log.Panicln(err)
+		seelog.Error(err)
+		return nil, err
 	}
 	initReq.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36")
 	resp, err := utils.GetClient().Do(initReq)
 	if err != nil {
-		log.Panicln(err)
+		seelog.Error(err)
+		return nil, err
 	}
 	utils.AddCookieStr(resp.Header.Values("Set-Cookie"))
 
@@ -37,82 +35,114 @@ func QrLogin() {
 	qrImage := new(module.QrImage)
 	err = utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/passport/web/create-qr64", qrImage, nil)
 	if err != nil {
-		log.Panicln(err)
+		seelog.Error(err)
+		return nil, err
 	}
 	if qrImage.ResultCode != "0" {
-		log.Panicln(qrImage)
+		seelog.Errorf("create-qr64 fail: %+v", qrImage)
+		return nil, errors.New("create-qr64 fail")
 	}
 
 	image, err := base64.StdEncoding.DecodeString(qrImage.Image)
 	if err != nil {
-		log.Panicln(err)
+		seelog.Error(err)
+		return nil, err
 	}
-	createQrCode(image)
+
+	err = createQrCode(image)
+	if err != nil {
+		seelog.Error(err)
+		return nil, err
+	}
+
+	return qrImage, nil
+}
+
+func QrLogin(qrImage *module.QrImage) error {
 
 	// 扫描二维码
+	var err error
+	data := make(url.Values)
+	data.Set("appid", "otn")
 	data.Set("uuid", qrImage.Uuid)
 	data.Set("RAIL_DEVICEID", utils.GetCookieVal("RAIL_DEVICEID"))
 	data.Set("RAIL_EXPIRATION", utils.GetCookieVal("RAIL_EXPIRATION"))
 	qrRes := new(module.QrRes)
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 60; i++ {
 		err = utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/passport/web/checkqr", qrRes, nil)
 		if err == nil && qrRes.ResultCode == "2" {
 			break
 		} else {
-			log.Println(err, qrRes.ResultMessage, "继续循环")
+			seelog.Infof("checkqr: %v, %+v, 继续循环", err, qrRes.ResultMessage)
 		}
 		time.Sleep(1 * time.Second)
 	}
-	loginUser.QrRes = qrRes
+	if err != nil {
+		seelog.Error(err)
+		return err
+	}
 
 	// 验证信息，获取tk
 	tk := new(module.TkRes)
 	utils.AddCookie(map[string]string{"uamtk": qrRes.Uamtk})
 	err = utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/passport/web/auth/uamtk", tk, nil)
 	if err != nil {
-		log.Panicln(err)
+		seelog.Error(err)
+		return err
 	}
 	if tk.ResultCode != 0 {
-		log.Panicln(tk.ResultMessage)
+		seelog.Errorf("uamtk fail: %+v", tk)
+		return errors.New("uamtk fail")
 	}
-	loginUser.TkRes = tk
 
-	GetLoginData()
+	err = GetLoginData(tk)
+	if err != nil {
+		seelog.Error(err)
+		return err
+	}
+
+	return nil
 }
 
-func GetLoginData() {
+func GetLoginData(tk *module.TkRes) error {
+	utils.AddCookie(map[string]string{"tk": tk.Newapptk})
+
 	data := make(url.Values)
 	data.Set("appid", "otn")
-	// 获取用户信息
+	data.Set("tk", tk.Newapptk)
 	userRes := new(module.UserRes)
-	data.Set("tk", loginUser.TkRes.Newapptk)
-	utils.AddCookie(map[string]string{"tk": loginUser.TkRes.Newapptk})
 	err := utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/otn/uamauthclient", userRes, nil)
 	if err != nil {
-		log.Panicln(err)
+		seelog.Error(err)
+		return err
 	}
 	if userRes.ResultCode != 0 {
-		log.Panicln(userRes.ResultMessage)
+		seelog.Error(userRes.ResultMessage)
+		return errors.New(userRes.ResultMessage)
 	}
 
 	apiRes := new(module.ApiRes)
 	err = utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/otn/index/initMy12306Api", apiRes, nil)
 	if err != nil {
-		log.Panicln(err)
+		seelog.Error(err)
+		return err
 	}
-	loginUser.ApiRes = apiRes
-	fmt.Println(fmt.Sprintf("%+v", apiRes))
+	if !apiRes.Status || apiRes.HTTPStatus != 200 {
+		seelog.Errorf("initMy12306Api fail: %+v", apiRes)
+		return errors.New("initMy12306Api fail")
+	}
 
 	staticTk := new(module.TkRes)
 	err = utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/passport/web/auth/uamtk-static", staticTk, nil)
 	if err != nil {
-		log.Panicln(err)
+		seelog.Error(err)
+		return err
 	}
-	fmt.Println(fmt.Sprintf("%+v", staticTk))
 
+	return nil
 }
 
-func LoginOut() {
+func LoginOut() error {
 	req, err := http.NewRequest("GET", "https://kyfw.12306.cn/otn/login/loginOut", strings.NewReader(""))
 	if err != nil {
 		log.Panicln(err)
@@ -120,18 +150,30 @@ func LoginOut() {
 	req.Header.Set("Cookie", utils.GetCookieStr())
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
 
-	resp, err := utils.GetClient().Do(req)
+	_, err = utils.GetClient().Do(req)
 	if err != nil {
-		log.Panicln(err)
+		seelog.Error(err)
 	}
-	fmt.Println(resp.StatusCode)
+	return err
 }
 
-func createQrCode(captchBody []byte) {
-	imgPath := "./image/qrcode.png"
-	err := ioutil.WriteFile(imgPath, captchBody, fs.ModePerm)
+func createQrCode(captchBody []byte) error {
+	_, err := os.Stat("./image")
 	if err != nil {
-		log.Panicln(err)
-		return
+		seelog.Warn(err)
+		err = os.Mkdir("./image", os.ModePerm)
+		if err != nil {
+			seelog.Error(err)
+			return err
+		}
 	}
+
+	imgPath := "./image/qrcode.png"
+	err = ioutil.WriteFile(imgPath, captchBody, fs.ModePerm)
+	if err != nil {
+		seelog.Error(err)
+		return err
+	}
+
+	return nil
 }

@@ -3,12 +3,13 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/cihub/seelog"
 	"github.com/tools/12306/conf"
 	"github.com/tools/12306/module"
 	"github.com/tools/12306/utils"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -21,33 +22,38 @@ var (
 	OrderRequestParam = regexp.MustCompile("var orderRequestDTO=(.+);")
 )
 
-func GetTrainInfo(searchParam *module.SearchParam) []*module.TrainData {
+func GetTrainInfo(searchParam *module.SearchParam) ([]*module.TrainData, error) {
 
 	var err error
 	req, err := http.NewRequest("GET", fmt.Sprintf("https://kyfw.12306.cn/otn/leftTicket/queryA?leftTicketDTO.train_date=%s&leftTicketDTO.from_station=%s&leftTicketDTO.to_station=%s&purpose_codes=ADULT", searchParam.TrainDate, searchParam.FromStation, searchParam.ToStation), strings.NewReader(""))
 	if err != nil {
-		log.Panicln(err)
+		seelog.Error(err)
+		return nil, err
 	}
 
 	req.Header.Set("Cookie", utils.GetCookieStr())
 
 	resp, err := utils.GetClient().Do(req)
 	if err != nil {
-		log.Panicln(err)
+		seelog.Error(err)
+		return nil, err
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Panicln(err)
+		seelog.Error(err)
+		return nil, err
 	}
 
 	searchRes := new(module.TrainRes)
 	err = json.Unmarshal(body, searchRes)
 	if err != nil {
-		log.Panicln(err)
+		seelog.Error(err)
+		return nil, err
 	}
 
 	if searchRes.HTTPStatus != 200 && searchRes.Status {
-		log.Panicln(searchRes.Message)
+		seelog.Errorf("get train info fail: %+v", searchRes)
+		return nil, errors.New("get train info fail")
 	}
 
 	searchDatas := make([]*module.TrainData, len(searchRes.Data.Result))
@@ -83,24 +89,27 @@ func GetTrainInfo(searchParam *module.SearchParam) []*module.TrainData {
 
 		searchDatas[i] = sd
 	}
-	return searchDatas
+	return searchDatas, nil
 }
 
-func GetRepeatSubmitToken() {
+func GetRepeatSubmitToken() (*module.SubmitToken, error) {
 	req, err := http.NewRequest("GET", "https://kyfw.12306.cn/otn/confirmPassenger/initDc", strings.NewReader(""))
 	if err != nil {
-		log.Panicln(err)
+		seelog.Error(err)
+		return nil, err
 	}
 	req.Header.Set("Cookie", utils.GetCookieStr())
 
 	resp, err := utils.GetClient().Do(req)
 	if err != nil {
-		log.Panicln(err)
+		seelog.Error(err)
+		return nil, err
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Panicln(err)
+		seelog.Error(err)
+		return nil, err
 	}
 
 	matchRes := TokenRe.FindStringSubmatch(string(body))
@@ -114,7 +123,8 @@ func GetRepeatSubmitToken() {
 		ticketRes[1] = bytes.Replace(ticketRes[1], []byte("'"), []byte(`"`), -1)
 		err = json.Unmarshal(ticketRes[1], &submitToken.TicketInfo)
 		if err != nil {
-			log.Panicln(err)
+			seelog.Error(err)
+			return nil, err
 		}
 	}
 
@@ -123,26 +133,29 @@ func GetRepeatSubmitToken() {
 		orderRes[1] = bytes.Replace(orderRes[1], []byte("'"), []byte(`"`), -1)
 		err = json.Unmarshal(orderRes[1], &submitToken.OrderRequestParam)
 		if err != nil {
-			log.Panicln(err)
+			seelog.Error(err)
+			return nil, err
 		}
 	}
 
-	loginUser.SubmitToken = submitToken
+	return submitToken, nil
 }
 
-func GetPassengers() *module.PassengerRes {
+func GetPassengers(submitToken *module.SubmitToken) (*module.PassengerRes, error) {
 
 	data := make(url.Values)
 	data.Set("_json_att", "")
-	data.Set("REPEAT_SUBMIT_TOKEN", loginUser.SubmitToken.Token)
+	data.Set("REPEAT_SUBMIT_TOKEN", submitToken.Token)
 	res := new(module.PassengerRes)
 	err := utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/otn/confirmPassenger/getPassengerDTOs", res, nil)
 	if err != nil {
-		log.Panicln(err)
+		seelog.Error(err)
+		return nil, err
 	}
 
 	if res.Status && res.HTTPStatus != 200 {
-		log.Panicln(res.Data.ExMsg)
+		seelog.Error(err)
+		return nil, err
 	}
 
 	for _, p := range res.Data.NormalPassengers {
@@ -154,30 +167,31 @@ func GetPassengers() *module.PassengerRes {
 		p.OldPassengerStr = oldPassengerStr
 	}
 
-	fmt.Println(fmt.Sprintf("%+v", res))
-
-	return res
+	return res, nil
 
 }
 
-func CheckUser() {
+func CheckUser() error {
 	data := make(url.Values)
 	data.Set("_json_att", "")
 	res := new(module.CheckUserRes)
 	err := utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/otn/login/checkUser", res, nil)
 	if err != nil {
-		log.Panicln(err)
+		seelog.Error(err)
+		return err
 	}
 
 	if res.Status && res.HTTPStatus != 200 {
-		log.Panicln(res.Messages)
+		seelog.Errorf("checkUser fail:")
+		return err
 	}
 
 	if !res.Data.Flag {
-		log.Panicln("check user:", res.Data.Flag)
+		seelog.Errorf("check user fail: %+v", res)
+		return errors.New("check user fail")
 	} else {
-		fmt.Println("check user success")
+		seelog.Info("check user success")
 	}
-	return
+	return nil
 
 }

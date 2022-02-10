@@ -3,8 +3,9 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/cihub/seelog"
+	"github.com/tools/12306/module"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"strings"
@@ -61,7 +62,7 @@ func Request(data string, cookieStr, url string, res interface{}, headers map[st
 
 	err = json.Unmarshal(respBody, res)
 	if err != nil {
-		log.Panicln(err, string(respBody), url)
+		seelog.Errorf("json unmarshal fail: %v, %v, %v", err, string(respBody), url)
 		return err
 	}
 
@@ -69,9 +70,7 @@ func Request(data string, cookieStr, url string, res interface{}, headers map[st
 	setCookies := resp.Header.Values("Set-Cookie")
 	AddCookieStr(setCookies)
 
-	if strings.Contains(url, "confirmPassenger") || strings.Contains(url, "leftTicket") {
-		fmt.Println(url, string(respBody))
-	}
+	seelog.Tracef("url: %v, response: %v", url, string(respBody))
 
 	return nil
 }
@@ -104,7 +103,6 @@ func RequestGet(cookieStr, url string, res interface{}, headers map[string]strin
 
 	err = json.Unmarshal(respBody, res)
 	if err != nil {
-		log.Panicln(err, string(respBody), url)
 		return err
 	}
 
@@ -117,4 +115,42 @@ func RequestGet(cookieStr, url string, res interface{}, headers map[string]strin
 	}
 
 	return nil
+}
+
+func EncodeParam(r *http.Request, param interface{}) error {
+	respBody, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		seelog.Error(err)
+		return err
+	}
+
+	err = json.Unmarshal(respBody, param)
+	if err != nil {
+		seelog.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+func HTTPSuccResp(w http.ResponseWriter, data interface{}) {
+	w.WriteHeader(http.StatusOK)
+	resp := &module.CommonResp{
+		Code:    0,
+		Message: "success",
+		Data:    data,
+	}
+	respJson, _ := json.Marshal(resp)
+	fmt.Fprint(w, string(respJson))
+}
+
+func HTTPFailResp(w http.ResponseWriter, statusCode, code int, message string, data interface{}) {
+	w.WriteHeader(statusCode)
+	resp := &module.CommonResp{
+		Code:    code,
+		Message: message,
+		Data:    data,
+	}
+	respJson, _ := json.Marshal(resp)
+	fmt.Fprint(w, string(respJson))
 }

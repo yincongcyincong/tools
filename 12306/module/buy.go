@@ -91,4 +91,5 @@ type SubmitOrderRes struct {
 	Status                 bool     `json:"status"`
 	HTTPStatus             int      `json:"httpstatus"`
 	Messages               []string `json:"messages"`
+	Data                   string   `json:"data"`
 }
