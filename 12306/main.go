@@ -129,8 +129,8 @@ func StartBuy(w http.ResponseWriter, r *http.Request) {
 	confirmRes := ConfirmQueue(loginUser.Passenger, loginUser.SubmitToken)
 	fmt.Println(fmt.Sprintf("%+v", confirmRes))
 
+	orderRes := OrderWait(loginUser.SubmitToken)
 	for i := 0; i < 100; i++ {
-		orderRes := OrderWait(loginUser.SubmitToken)
 		fmt.Println(fmt.Sprintf("%+v", orderRes))
 		if orderRes.Data.OrderId != "" {
 			break
@@ -139,7 +139,7 @@ func StartBuy(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(3 * time.Second)
 	}
 
-	OrderResult(loginUser.SubmitToken)
+	OrderResult(loginUser.SubmitToken, orderRes.Data.OrderId)
 
 
 }

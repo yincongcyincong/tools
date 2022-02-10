@@ -53,12 +53,12 @@ func CheckOrder(passenger *module.Passenger, submitToken *module.SubmitToken) *m
 	return checkOrderRes
 }
 
-func OrderResult(submitToken *module.SubmitToken) *module.OrderResultRes {
+func OrderResult(submitToken *module.SubmitToken, orderNo string) *module.OrderResultRes {
 
 	// url encode需要小心，会多处理
 	var err error
 	data := make(url.Values)
-	data.Set("orderSequence_no", "")
+	data.Set("orderSequence_no", orderNo)
 	data.Set("REPEAT_SUBMIT_TOKEN", submitToken.Token)
 	data.Set("json_att", "")
 
