@@ -7,7 +7,7 @@ import (
 )
 
 type cookieInfo struct {
-	Cookie map[string]string
+	cookie map[string]string
 	lock   sync.Mutex
 }
 
@@ -15,12 +15,12 @@ var cookie *cookieInfo
 
 func init() {
 	cookie = &cookieInfo{
-		Cookie: make(map[string]string),
+		cookie: make(map[string]string),
 		lock:   sync.Mutex{},
 	}
 
-	cookie.Cookie["RAIL_DEVICEID"] = "NQl1KbtiC9ytGXWvYmSKevxQLhMDHuidN3AhAIoyeatifKs9WHMlOa3zIkpJmTQsj39fUlrwE5ai9tUlTCYu7wZUjHbbPy1KhQbN9QhNgSkeIbUWa8ij_sXKoh2RtFUKogKSq6k3y0Vk2oZJxd0N-UiJzpKgN3sf"
-	cookie.Cookie["RAIL_EXPIRATION"] = "1644684709232"
+	cookie.cookie["RAIL_DEVICEID"] = "NQl1KbtiC9ytGXWvYmSKevxQLhMDHuidN3AhAIoyeatifKs9WHMlOa3zIkpJmTQsj39fUlrwE5ai9tUlTCYu7wZUjHbbPy1KhQbN9QhNgSkeIbUWa8ij_sXKoh2RtFUKogKSq6k3y0Vk2oZJxd0N-UiJzpKgN3sf"
+	cookie.cookie["RAIL_EXPIRATION"] = "1644684709232"
 
 }
 
@@ -28,14 +28,14 @@ func AddCookie(kv map[string]string) {
 	cookie.lock.Lock()
 	defer cookie.lock.Unlock()
 	for k, v := range kv {
-		cookie.Cookie[k] = v
+		cookie.cookie[k] = v
 	}
 }
 
 func GetCookieVal(key string) string {
 	cookie.lock.Lock()
 	defer cookie.lock.Unlock()
-	return cookie.Cookie[key]
+	return cookie.cookie[key]
 }
 
 func AddCookieStr(setCookies []string) {
@@ -48,7 +48,7 @@ func AddCookieStr(setCookies []string) {
 			cookieKV = strings.TrimSpace(cookieKV)
 			cookieSlice := strings.SplitN(cookieKV, "=", 2)
 			if len(cookieSlice) >= 2 {
-				cookie.Cookie[cookieSlice[0]] = cookieSlice[1]
+				cookie.cookie[cookieSlice[0]] = cookieSlice[1]
 			}
 		}
 	}
@@ -58,7 +58,7 @@ func GetCookieStr() string {
 	res := ""
 	cookie.lock.Lock()
 	defer cookie.lock.Unlock()
-	for k, v := range cookie.Cookie {
+	for k, v := range cookie.cookie {
 		res = fmt.Sprintf("%s%s=%s; ", res, k, v)
 	}
 	return res
