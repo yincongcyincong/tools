@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/cihub/seelog"
 	"github.com/tools/12306/conf"
@@ -12,10 +13,15 @@ import (
 	"time"
 )
 
-func init() {
-	logger, err := seelog.LoggerFromConfigAsString(`<seelog type="sync">
+var (
+	runType = flag.String("run_type", "command", "command: 命令行模式，web：网页模式")
+	email   = flag.String("email", "", "格式：发送方,接收方,邮件服务,登陆用户名,登陆密码(xxxx@qq.com,xx@qq.com,smtp.qq.com,xxxxx,xxxxx), 为空表示不通知")
+)
+
+func initLog(logType string) {
+	logger, err := seelog.LoggerFromConfigAsString(`<seelog type="sync" minlevel="trace">
     <outputs formatid="main">
-        <file path="log/log.log"/>
+        ` + logType + `
     </outputs>
 	<formats>
         <format id="main" format="%UTCDate %UTCTime [%LEV] %RelFile:%Line - %Msg%n"></format>
@@ -31,18 +37,26 @@ func init() {
 }
 
 func main() {
-	http.HandleFunc("/create-image", CreateImageReq)
-	http.HandleFunc("/login", QrLoginReq)
-	http.HandleFunc("/logout", UserLogoutReq)
-	http.HandleFunc("/search-train", SearchTrain)
-	http.HandleFunc("/search-info", SearchInfo)
-	http.HandleFunc("/order", StartOrderReq)
-	http.HandleFunc("/login-process", LoginProcess)
-	http.HandleFunc("/buy-process", BuyProcess)
-	http.HandleFunc("/re-login", ReLogin)
-	if err := http.ListenAndServe(":8000", nil); err != nil {
-		log.Panicln(err)
+	switch *runType {
+	case "web":
+		initLog(`<file path="log/log.log"/>`)
+		http.HandleFunc("/create-image", CreateImageReq)
+		http.HandleFunc("/login", QrLoginReq)
+		http.HandleFunc("/logout", UserLogoutReq)
+		http.HandleFunc("/search-train", SearchTrain)
+		http.HandleFunc("/search-info", SearchInfo)
+		http.HandleFunc("/order", StartOrderReq)
+		http.HandleFunc("/login-process", LoginProcess)
+		http.HandleFunc("/buy-process", BuyProcess)
+		http.HandleFunc("/re-login", ReLogin)
+		if err := http.ListenAndServe(":28178", nil); err != nil {
+			log.Panicln(err)
+		}
+	default:
+		initLog(`<console/>`)
+		CommandStart()
 	}
+
 }
 
 func CreateImageReq(w http.ResponseWriter, r *http.Request) {
@@ -276,19 +290,6 @@ func BuyProcess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Println(fmt.Sprintf("%+v", res[2]))
-
-	//submitToken, err := GetRepeatSubmitToken()
-	//if err != nil {
-	//	utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
-	//	return
-	//}
-	//
-	//passengers, err := GetPassengers(submitToken)
-	//if err != nil {
-	//	utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
-	//	return
-	//}
-	//fmt.Println(passengers)
 
 	orderParam := &module.OrderParam{
 		TrainData:   res[2],
