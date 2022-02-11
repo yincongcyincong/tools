@@ -71,6 +71,9 @@ func Request(data string, cookieStr, url string, res interface{}, headers map[st
 	AddCookieStr(setCookies)
 
 	seelog.Tracef("url: %v, param: %v, response: %v", url, data, string(respBody))
+	if strings.Contains(url, "confirmSingleForQueue") {
+		seelog.Trace("confirmSingleForQueue cookie", cookieStr)
+	}
 
 	return nil
 }

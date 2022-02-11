@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/cihub/seelog"
 	"github.com/tools/12306/conf"
@@ -12,10 +13,13 @@ import (
 )
 
 func init() {
-	logger, err := seelog.LoggerFromConfigAsString(`<seelog>
-    <outputs>
+	logger, err := seelog.LoggerFromConfigAsString(`<seelog type="sync">
+    <outputs formatid="main">
         <file path="log/log.log"/>
     </outputs>
+	<formats>
+        <format id="main" format="%UTCDate %UTCTime [%LEV] %RelFile:%Line - %Msg%n"></format>
+    </formats>
 </seelog>`)
 	if err != nil {
 		log.Panicln(err)
@@ -34,6 +38,7 @@ func main() {
 	http.HandleFunc("/search-info", SearchInfo)
 	http.HandleFunc("/order", StartOrderReq)
 	http.HandleFunc("/login-process", LoginProcess)
+	http.HandleFunc("/buy-process", BuyProcess)
 	http.HandleFunc("/re-login", ReLogin)
 	if err := http.ListenAndServe(":8000", nil); err != nil {
 		log.Panicln(err)
@@ -138,10 +143,16 @@ func StartOrderReq(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = GetPassengers(submitToken)
+	passengers, err := GetPassengers(submitToken)
 	if err != nil {
 		utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
 		return
+	}
+	orderParam.Passengers = make([]*module.Passenger, 0)
+	for _, p := range passengers.Data.NormalPassengers {
+		if _, ok := orderParam.PassengerName[p.PassengerName]; ok {
+			orderParam.Passengers = append(orderParam.Passengers, p)
+		}
 	}
 
 	err = CheckOrder(orderParam.Passengers, submitToken, orderParam.SearchParam)
@@ -181,10 +192,16 @@ func StartOrderReq(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	utils.HTTPSuccResp(w, "购票成功")
 }
 
 func ReLogin(w http.ResponseWriter, r *http.Request) {
-	GetLoginData()
+	err := GetLoginData()
+	if err != nil {
+		utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
+		return
+	}
+	utils.HTTPSuccResp(w, "重新登陆成功")
 }
 
 func LoginProcess(w http.ResponseWriter, r *http.Request) {
@@ -228,6 +245,125 @@ func LoginProcess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Println(res)
+
+	utils.HTTPSuccResp(w, "")
+}
+
+func BuyProcess(w http.ResponseWriter, r *http.Request) {
+	qrImage, err := CreateImage()
+	if err != nil {
+		utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
+		return
+	}
+	qrImage.Image = ""
+
+	err = QrLogin(qrImage)
+	if err != nil {
+		utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
+		return
+	}
+
+	searchParam := &module.SearchParam{
+		TrainDate:       "2022-02-17",
+		FromStation:     "BJP",
+		ToStation:       "TJP",
+		FromStationName: "北京",
+		ToStationName:   "天津",
+		SeatType:        "O",
+	}
+	res, err := GetTrainInfo(searchParam)
+	if err != nil {
+		utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
+		return
+	}
+	fmt.Println(fmt.Sprintf("%+v", res[2]))
+
+	//submitToken, err := GetRepeatSubmitToken()
+	//if err != nil {
+	//	utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
+	//	return
+	//}
+	//
+	//passengers, err := GetPassengers(submitToken)
+	//if err != nil {
+	//	utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
+	//	return
+	//}
+	//fmt.Println(passengers)
+
+	orderParam := &module.OrderParam{
+		TrainData:   res[2],
+		SearchParam: searchParam,
+		PassengerName: map[string]bool{
+			"尹聪": true,
+		},
+	}
+	d, _ := json.Marshal(orderParam)
+	fmt.Println(string(d))
+
+	err = CheckUser()
+	if err != nil {
+		utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
+		return
+	}
+
+	err = SubmitOrder(orderParam.TrainData, orderParam.SearchParam)
+	if err != nil {
+		utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
+		return
+	}
+
+	submitToken, err := GetRepeatSubmitToken()
+	if err != nil {
+		utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
+		return
+	}
+
+	passengers, err := GetPassengers(submitToken)
+	if err != nil {
+		utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
+		return
+	}
+	orderParam.Passengers = passengers.Data.NormalPassengers[:1]
+
+	err = CheckOrder(orderParam.Passengers, submitToken, orderParam.SearchParam)
+	if err != nil {
+		utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
+		return
+	}
+
+	err = GetQueueCount(submitToken, orderParam.SearchParam)
+	if err != nil {
+		utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
+		return
+	}
+
+	for i := 0; i < 3; i++ {
+		err = ConfirmQueue(orderParam.Passengers, submitToken, orderParam.SearchParam)
+		if err != nil {
+			utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
+		}
+		time.Sleep(1 * time.Second)
+	}
+
+	var orderWaitRes *module.OrderWaitRes
+	for i := 0; i < 10; i++ {
+		orderWaitRes, err = OrderWait(submitToken)
+		if err != nil {
+			continue
+		}
+		if orderWaitRes.Data.OrderId != "" {
+			break
+		}
+
+		time.Sleep(3 * time.Second)
+	}
+
+	err = OrderResult(submitToken, orderWaitRes.Data.OrderId)
+	if err != nil {
+		utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
+		return
+	}
 
 	utils.HTTPSuccResp(w, "")
 }
