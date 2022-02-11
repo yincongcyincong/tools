@@ -79,7 +79,7 @@ func UserLogoutReq(w http.ResponseWriter, r *http.Request) {
 }
 
 func SearchInfo(w http.ResponseWriter, r *http.Request) {
-	// todo 可能是submit token没有购买使用会造成失败
+
 	res := new(module.SearchInfo)
 	submitToken, err := GetRepeatSubmitToken()
 	if err != nil {
@@ -177,13 +177,12 @@ func StartOrderReq(w http.ResponseWriter, r *http.Request) {
 	for i := 0; i < 10; i++ {
 		orderWaitRes, err = OrderWait(submitToken)
 		if err != nil {
+			time.Sleep(3 * time.Second)
 			continue
 		}
 		if orderWaitRes.Data.OrderId != "" {
 			break
 		}
-
-		time.Sleep(3 * time.Second)
 	}
 
 	err = OrderResult(submitToken, orderWaitRes.Data.OrderId)
@@ -338,25 +337,22 @@ func BuyProcess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for i := 0; i < 3; i++ {
-		err = ConfirmQueue(orderParam.Passengers, submitToken, orderParam.SearchParam)
-		if err != nil {
-			utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
-		}
-		time.Sleep(1 * time.Second)
+	err = ConfirmQueue(orderParam.Passengers, submitToken, orderParam.SearchParam)
+	if err != nil {
+		utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
+		return
 	}
 
 	var orderWaitRes *module.OrderWaitRes
 	for i := 0; i < 10; i++ {
 		orderWaitRes, err = OrderWait(submitToken)
 		if err != nil {
+			time.Sleep(3 * time.Second)
 			continue
 		}
 		if orderWaitRes.Data.OrderId != "" {
 			break
 		}
-
-		time.Sleep(3 * time.Second)
 	}
 
 	err = OrderResult(submitToken, orderWaitRes.Data.OrderId)

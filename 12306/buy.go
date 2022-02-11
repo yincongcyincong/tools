@@ -56,7 +56,7 @@ func CheckOrder(passengers []*module.Passenger, submitToken *module.SubmitToken,
 		oldPassengerStr = oldPassengerStr + strings.Replace(url.QueryEscape(p.OldPassengerStr), "%2A", "*", -1)
 	}
 	data := fmt.Sprintf("bed_level_order_num=000000000000000000000000000000&passengerTicketStr=%s&oldPassengerStr=%s&tour_flag=dc&randCode=&sessionId=&sig=&cancel_flag=2&_json_att=&whatsSelect=1&scene=nc_login&REPEAT_SUBMIT_TOKEN=%s",
-		passengerTicketStr, oldPassengerStr, submitToken.Token)
+		strings.Trim(passengerTicketStr, "_"), oldPassengerStr, submitToken.Token)
 
 	checkOrderRes := new(module.CheckOrderRes)
 	err := utils.Request(data, utils.GetCookieStr(), "https://kyfw.12306.cn/otn/confirmPassenger/checkOrderInfo", checkOrderRes, map[string]string{"Referer": "https://kyfw.12306.cn/otn/confirmPassenger/initDc"})
