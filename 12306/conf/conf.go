@@ -30,6 +30,8 @@ var (
 		"硬座":  29,
 		"无座":  26,
 	}
+
+	QueryUrl = ""
 )
 
 func init() {

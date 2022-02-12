@@ -26,8 +26,8 @@ func GetTrainInfo(searchParam *module.SearchParam) ([]*module.TrainData, error) 
 
 	var err error
 	searchRes := new(module.TrainRes)
-	err = utils.RequestGet(utils.GetCookieStr(), fmt.Sprintf("https://kyfw.12306.cn/otn/leftTicket/queryA?leftTicketDTO.train_date=%s&leftTicketDTO.from_station=%s&leftTicketDTO.to_station=%s&purpose_codes=ADULT",
-		searchParam.TrainDate, searchParam.FromStation, searchParam.ToStation),searchRes, nil )
+	err = utils.RequestGet(utils.GetCookieStr(), fmt.Sprintf("https://kyfw.12306.cn/otn/%s?leftTicketDTO.train_date=%s&leftTicketDTO.from_station=%s&leftTicketDTO.to_station=%s&purpose_codes=ADULT",
+		conf.QueryUrl, searchParam.TrainDate, searchParam.FromStation, searchParam.ToStation),searchRes, nil )
 	if err != nil {
 		seelog.Error(err)
 		return nil, err

@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"github.com/cihub/seelog"
+	"github.com/tools/12306/conf"
 	"github.com/tools/12306/module"
 	"github.com/tools/12306/utils"
 	"io/fs"
@@ -136,8 +137,14 @@ func GetLoginData() error {
 	}
 	seelog.Infof("%s 登陆成功", apiRes.Data["user_name"])
 
-	// todo 需要init conf
-
+	// 获取查询或者的query url
+	confRes := new(module.InitConfRes)
+	err = utils.Request(data.Encode(), utils.GetCookieStr(), "https://kyfw.12306.cn/otn/login/conf", confRes, nil)
+	if err != nil {
+		seelog.Error(err)
+		return err
+	}
+	conf.QueryUrl = confRes.Data.QueryUrl
 
 	// 获取特殊cookie字段
 	staticTk := new(module.TkRes)

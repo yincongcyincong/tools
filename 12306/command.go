@@ -26,14 +26,18 @@ func CommandStart() {
 	}
 	searchParam := new(module.SearchParam)
 	var trainStr, seatStr, passengerStr string
-	for {
+	for i := 1; i < math.MaxInt64; i++ {
 		getUserInfo(searchParam, &trainStr, &seatStr, &passengerStr)
 		if trainStr != "" && seatStr != "" && passengerStr != "" {
 			break
 		}
 
-		// 进行数据填写
-		time.Sleep(2 * time.Second)
+		err = GetLoginData()
+		if err != nil {
+			seelog.Errorf("自动登陆失败：%v", err)
+		}
+
+		time.Sleep(5 * time.Second)
 	}
 
 	// 开始轮训买票
@@ -41,8 +45,12 @@ func CommandStart() {
 	passengerMap := utils.GetBoolMap(strings.Split(passengerStr, ","))
 	seatSlice := strings.Split(seatStr, ",")
 
+Search:
+	var trainData *module.TrainData
 	for i := 0; i < math.MaxInt64; i++ {
 		time.Sleep(2 * time.Second)
+		searchParam.SeatType = ""
+		trainData = new(module.TrainData)
 
 		// 一分钟进行一次自动登陆
 		if i%30 == 0 {
@@ -57,7 +65,7 @@ func CommandStart() {
 			seelog.Errorf("查询车站失败:%v", err)
 			continue
 		}
-		var trainData *module.TrainData
+
 		for _, t := range trains {
 			// 在选中的，但是不在小黑屋里面
 			if utils.InBlackList(t.TrainNo) {
@@ -65,26 +73,37 @@ func CommandStart() {
 				continue
 			}
 
+
 			if trainMap[t.TrainNo] {
+				fmt.Println(trainMap, t.TrainNo, seatSlice, t.SeatInfo)
 				for _, s := range seatSlice {
 					if t.SeatInfo[s] != "" && t.SeatInfo[s] != "无" {
 						trainData = t
-						searchParam.SeatType = s
+						searchParam.SeatType = conf.OrderSeatType[s]
 						break
 					}
+					seelog.Infof("%s %s 数量: %s", t.TrainNo, s, t.SeatInfo[s])
+				}
+
+				if trainData != nil && searchParam.SeatType != "" {
+					break
 				}
 			}
 		}
-		if trainData == nil {
-			fmt.Println("暂无车票可以购买:")
+		if trainData == nil || searchParam.SeatType == "" {
+			fmt.Println("暂无车票可以购买")
 			continue
+		} else {
+			break
 		}
 
-		fmt.Println("开始购买", trainData.TrainNo)
-		err = startOrder(searchParam, trainData, passengerMap)
-		if err != nil {
-			utils.AddBlackList(trainData.TrainNo, time.Now().Unix())
-		}
+	}
+
+	fmt.Println("开始购买", trainData.TrainNo)
+	err = startOrder(searchParam, trainData, passengerMap)
+	if err != nil {
+		utils.AddBlackList(trainData.TrainNo, time.Now().Unix())
+		goto Search
 	}
 
 }

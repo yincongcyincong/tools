@@ -8,6 +8,7 @@ import (
 	"github.com/tools/12306/conf"
 	"github.com/tools/12306/module"
 	"github.com/tools/12306/utils"
+	"github.com/tools/12306/view"
 	"log"
 	"net/http"
 	"time"
@@ -19,7 +20,7 @@ var (
 )
 
 func initLog(logType string) {
-	logger, err := seelog.LoggerFromConfigAsString(`<seelog type="sync" minlevel="trace">
+	logger, err := seelog.LoggerFromConfigAsString(`<seelog type="sync" minlevel="info">
     <outputs formatid="main">
         ` + logType + `
     </outputs>
@@ -37,26 +38,44 @@ func initLog(logType string) {
 }
 
 func main() {
+
+	flag.Parse()
+
 	switch *runType {
 	case "web":
 		initLog(`<file path="log/log.log"/>`)
-		http.HandleFunc("/create-image", CreateImageReq)
-		http.HandleFunc("/login", QrLoginReq)
-		http.HandleFunc("/logout", UserLogoutReq)
-		http.HandleFunc("/search-train", SearchTrain)
-		http.HandleFunc("/search-info", SearchInfo)
-		http.HandleFunc("/order", StartOrderReq)
-		http.HandleFunc("/login-process", LoginProcess)
-		http.HandleFunc("/buy-process", BuyProcess)
-		http.HandleFunc("/re-login", ReLogin)
-		if err := http.ListenAndServe(":28178", nil); err != nil {
-			log.Panicln(err)
-		}
 	default:
 		initLog(`<console/>`)
-		CommandStart()
+		go CommandStart()
 	}
 
+	http.HandleFunc("/create-image", CreateImageReq)
+	http.HandleFunc("/login", QrLoginReq)
+	http.HandleFunc("/logout", UserLogoutReq)
+	http.HandleFunc("/search-train", SearchTrain)
+	http.HandleFunc("/search-info", SearchInfo)
+	http.HandleFunc("/order-view", OrderView)
+	http.HandleFunc("/order", IsLogin(StartOrderReq))
+	http.HandleFunc("/login-process", LoginProcess)
+	http.HandleFunc("/buy-process", BuyProcess)
+	http.HandleFunc("/re-login", ReLogin)
+	if err := http.ListenAndServe(":28178", nil); err != nil {
+		log.Panicln(err)
+	}
+}
+
+func IsLogin(reqFunc func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		// 判断是否login
+		err := GetLoginData()
+		if err != nil {
+			utils.HTTPFailResp(w, http.StatusInternalServerError, 2, "not login", "")
+			return
+		}
+
+		reqFunc(w, r)
+	}
 }
 
 func CreateImageReq(w http.ResponseWriter, r *http.Request) {
@@ -129,6 +148,10 @@ func SearchTrain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.HTTPSuccResp(w, res)
+}
+
+func OrderView(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprint(w, view.ViewHtml)
 }
 
 func StartOrderReq(w http.ResponseWriter, r *http.Request) {

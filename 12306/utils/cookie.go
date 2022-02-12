@@ -2,8 +2,12 @@ package utils
 
 import (
 	"fmt"
+	"math/rand"
+	"net/url"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 type cookieInfo struct {
@@ -18,6 +22,32 @@ func init() {
 		cookie: make(map[string]string),
 		lock:   sync.Mutex{},
 	}
+
+	data := url.Values{}
+	data.Set("adblock", "0")
+	data.Set("cookieEnabled", "1")
+	data.Set("custID", "133")
+	data.Set("doNotTrack", "unknown")
+	data.Set("flashVersion", "0")
+	data.Set("javaEnabled", "0")
+	data.Set("jsFonts", "c227b88b01f5c513710d4b9f16a5ce52")
+	data.Set("localCode", "3232236206")
+	data.Set("mimeTypes", "52d67b2a5aa5e031084733d5006cc664")
+	data.Set("os", "MacIntel")
+	data.Set("platform", "WEB")
+	data.Set("plugins", "d22ca0b81584fbea62237b14bd04c866")
+	data.Set("scrAvailSize", strconv.Itoa(rand.Intn(1000)) + "x1920")
+	data.Set("srcScreenSize", "24xx1080x1920")
+	data.Set("storeDb", "i1l1o1s1")
+	data.Set("timeZone", "-8")
+	data.Set("touchSupport", "99115dfb07133750ba677d055874de87")
+	data.Set("userAgent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.80 Safari/537.36")
+	data.Set("webSmartID", "f4e3b7b14cc647e30a6267028ad54c56")
+	data.Set("timestamp", strconv.Itoa(int(time.Now().Unix() * 1000)))
+
+
+	//response = session.httpClint.send(urls.get("GetJS"))
+	//result = re.search(r'algID\\x3d(.*?)\\x26', response)
 
 	cookie.cookie["RAIL_DEVICEID"] = "NQl1KbtiC9ytGXWvYmSKevxQLhMDHuidN3AhAIoyeatifKs9WHMlOa3zIkpJmTQsj39fUlrwE5ai9tUlTCYu7wZUjHbbPy1KhQbN9QhNgSkeIbUWa8ij_sXKoh2RtFUKogKSq6k3y0Vk2oZJxd0N-UiJzpKgN3sf"
 	cookie.cookie["RAIL_EXPIRATION"] = "1644684709232"
