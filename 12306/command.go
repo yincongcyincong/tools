@@ -122,28 +122,27 @@ func getUserInfo(searchParam *module.SearchParam, trainStr, seatStr, passengerSt
 	for _, t := range trains {
 		fmt.Println(fmt.Sprintf("车次: %s, 状态: %s, 始发车站: %s, 终点站:%s,  %s: %s, 历时：%s",
 			t.TrainNo, t.Status, t.FromStationName, t.ToStationName, t.StartTime, t.ArrivalTime, t.DistanceTime))
-
 	}
 
 	fmt.Println("请输入车次(多个,分割):")
 	fmt.Scanf("%s", trainStr)
 
-	fmt.Println("请输入座位类型(多个,分割，二等座，硬座，卧铺等):")
+	fmt.Println("请输入座位类型(多个,分割，一等座，二等座，硬座，软卧，硬卧等):")
 	fmt.Scanf("%s", seatStr)
 
-	submitToken, err := GetRepeatSubmitToken()
-	if err != nil {
-		seelog.Errorf("获取提交数据失败:%v", err)
-		return
-	}
-	passengers, err := GetPassengers(submitToken)
-	if err != nil {
-		seelog.Errorf("获取用户失败:%v", err)
-		return
-	}
-	for _, p := range passengers.Data.NormalPassengers {
-		fmt.Println(fmt.Sprintf("乘客姓名：%s", p.PassengerName))
-	}
+	//submitToken, err := GetRepeatSubmitToken()
+	//if err != nil {
+	//	seelog.Errorf("获取提交数据失败:%v", err)
+	//	return
+	//}
+	//passengers, err := GetPassengers(submitToken)
+	//if err != nil {
+	//	seelog.Errorf("获取用户失败:%v", err)
+	//	return
+	//}
+	//for _, p := range passengers.Data.NormalPassengers {
+	//	fmt.Println(fmt.Sprintf("乘客姓名：%s", p.PassengerName))
+	//}
 
 	if *passengerStr == "" {
 		fmt.Println("请输入乘客姓名(多个,分割): ")
@@ -203,7 +202,7 @@ func startOrder(searchParam *module.SearchParam, trainData *module.TrainData, pa
 	}
 
 	var orderWaitRes *module.OrderWaitRes
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 20; i++ {
 		orderWaitRes, err = OrderWait(submitToken)
 		if err != nil {
 			time.Sleep(3 * time.Second)
@@ -220,6 +219,6 @@ func startOrder(searchParam *module.SearchParam, trainData *module.TrainData, pa
 		return err
 	}
 
-	seelog.Info("购买成功，订单号：%s", orderWaitRes.Data.OrderId)
+	seelog.Infof("购买成功，订单号：%s", orderWaitRes.Data.OrderId)
 	return nil
 }

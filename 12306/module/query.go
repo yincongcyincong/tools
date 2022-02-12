@@ -113,5 +113,5 @@ type OrderParam struct {
 	TrainData     *TrainData      `json:"train_data"`
 	Passengers    []*Passenger    `json:"-"`
 	SearchParam   *SearchParam    `json:"search_param"`
-	PassengerName map[string]bool `json:"passenger_name"`
+	PassengerMap map[string]bool `json:"passenger_name"`
 }

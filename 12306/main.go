@@ -20,7 +20,7 @@ var (
 )
 
 func initLog(logType string) {
-	logger, err := seelog.LoggerFromConfigAsString(`<seelog type="sync" minlevel="info">
+	logger, err := seelog.LoggerFromConfigAsString(`<seelog type="sync" minlevel="trace">
     <outputs formatid="main">
         ` + logType + `
     </outputs>
@@ -187,7 +187,7 @@ func StartOrderReq(w http.ResponseWriter, r *http.Request) {
 	}
 	orderParam.Passengers = make([]*module.Passenger, 0)
 	for _, p := range passengers.Data.NormalPassengers {
-		if _, ok := orderParam.PassengerName[p.PassengerName]; ok {
+		if _, ok := orderParam.PassengerMap[p.PassengerName]; ok {
 			orderParam.Passengers = append(orderParam.Passengers, p)
 		}
 	}
@@ -299,6 +299,18 @@ func BuyProcess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//submitToken, err := GetRepeatSubmitToken()
+	//if err != nil {
+	//	utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
+	//	return
+	//}
+	//
+	//passengers, err := GetPassengers(submitToken)
+	//if err != nil {
+	//	utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
+	//	return
+	//}
+
 	searchParam := &module.SearchParam{
 		TrainDate:       "2022-02-17",
 		FromStation:     "BJP",
@@ -317,7 +329,7 @@ func BuyProcess(w http.ResponseWriter, r *http.Request) {
 	orderParam := &module.OrderParam{
 		TrainData:   res[2],
 		SearchParam: searchParam,
-		PassengerName: map[string]bool{
+		PassengerMap: map[string]bool{
 			"尹聪": true,
 		},
 	}
@@ -368,7 +380,7 @@ func BuyProcess(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var orderWaitRes *module.OrderWaitRes
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 20; i++ {
 		orderWaitRes, err = OrderWait(submitToken)
 		if err != nil {
 			time.Sleep(3 * time.Second)
