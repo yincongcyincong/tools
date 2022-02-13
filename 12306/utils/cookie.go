@@ -49,8 +49,8 @@ func init() {
 	//response = session.httpClint.send(urls.get("GetJS"))
 	//result = re.search(r'algID\\x3d(.*?)\\x26', response)
 
-	cookie.cookie["RAIL_DEVICEID"] = "NQl1KbtiC9ytGXWvYmSKevxQLhMDHuidN3AhAIoyeatifKs9WHMlOa3zIkpJmTQsj39fUlrwE5ai9tUlTCYu7wZUjHbbPy1KhQbN9QhNgSkeIbUWa8ij_sXKoh2RtFUKogKSq6k3y0Vk2oZJxd0N-UiJzpKgN3sf"
-	cookie.cookie["RAIL_EXPIRATION"] = "1644684709232"
+	cookie.cookie["RAIL_DEVICEID"] = "XpiVsNgwTdlWaiJ4o8fyNowlDYx4yAHUvuZYGjWsZ76OeObGN9fv9TX4ZpnTnyy2OkKd755kk2mGCc6mbqDoDzFNjRyPRYfahfklcdWDnsBpHo24jSvpUjy2To00xN8LCYwBVbHzoZagYdfmQU67FclOTJlrgriE"
+	cookie.cookie["RAIL_EXPIRATION"] = "1645054427799"
 
 }
 
