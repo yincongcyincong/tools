@@ -23,7 +23,7 @@ var (
 )
 
 func initLog(logType string) {
-	logger, err := seelog.LoggerFromConfigAsString(`<seelog type="sync" minlevel="info">
+	logger, err := seelog.LoggerFromConfigAsString(`<seelog type="sync" minlevel="trace">
     <outputs formatid="main">
         ` + logType + `
     </outputs>
