@@ -57,7 +57,7 @@ Search:
 		}
 	}
 
-	fmt.Println("开始购买", trainData.TrainNo)
+	seelog.Info("开始购买", trainData.TrainNo)
 	err = startOrder(searchParam, trainData, passengerMap)
 	if err != nil {
 		utils.AddBlackList(trainData.TrainNo)
@@ -93,12 +93,11 @@ func getTrainInfo(searchParam *module.SearchParam, i int, trainMap map[string]bo
 	for _, t := range trains {
 		// 在选中的，但是不在小黑屋里面
 		if utils.InBlackList(t.TrainNo) {
-			fmt.Println(t.TrainNo, "在小黑屋，需等待60s")
+			seelog.Info(t.TrainNo, "在小黑屋，需等待60s")
 			continue
 		}
 
 		if trainMap[t.TrainNo] {
-			fmt.Println(trainMap, t.TrainNo, seatSlice, t.SeatInfo)
 			for _, s := range seatSlice {
 				if t.SeatInfo[s] != "" && t.SeatInfo[s] != "无" {
 					trainData = t
@@ -115,7 +114,7 @@ func getTrainInfo(searchParam *module.SearchParam, i int, trainMap map[string]bo
 	}
 
 	if trainData == nil || searchParam.SeatType == "" {
-		fmt.Println("暂无车票可以购买")
+		seelog.Info("暂无车票可以购买")
 		return nil, errors.New("暂无车票可以购买")
 	}
 	return trainData, nil

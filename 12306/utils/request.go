@@ -145,7 +145,7 @@ func RequestGetWithoutJson(cookieStr, url string, headers map[string]string) ([]
 	setCookies := resp.Header.Values("Set-Cookie")
 	AddCookieStr(setCookies)
 
-	//seelog.Tracef("url: %v, response: %v", url, string(respBody))
+	seelog.Tracef("url: %v, response: %v", url, string(respBody))
 
 	return respBody, nil
 }

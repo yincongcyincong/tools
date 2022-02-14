@@ -69,7 +69,6 @@ func CheckOrder(passengers []*module.Passenger, submitToken *module.SubmitToken,
 	data.Set("scene", "nc_login")
 	data.Set("REPEAT_SUBMIT_TOKEN", submitToken.Token)
 
-
 	checkOrderRes := new(module.CheckOrderRes)
 	err := utils.Request(utils.ReplaceSpecailChar(data.Encode()), utils.GetCookieStr(), "https://kyfw.12306.cn/otn/confirmPassenger/checkOrderInfo", checkOrderRes, map[string]string{"Referer": "https://kyfw.12306.cn/otn/confirmPassenger/initDc"})
 	if err != nil {

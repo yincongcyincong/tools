@@ -42,12 +42,15 @@ func initLog(logType string) {
 
 func initCookieInfo() {
 	// 用户自己设置设置device信息
+	utils.GetDeviceInfo()
+
 	if *deviceId != "" && *deviceExp != "" {
 		utils.AddCookie(map[string]string{
 			"RAIL_DEVICEID": *deviceId,
 			"RAIL_EXPIRATION": *deviceExp,
 		})
 	}
+	fmt.Println(utils.GetCookieStr())
 }
 
 func main() {
@@ -57,11 +60,12 @@ func main() {
 	switch *runType {
 	case "web":
 		initLog(`<file path="log/log.log"/>`)
+		initCookieInfo()
 	default:
 		initLog(`<console/>`)
+		initCookieInfo()
 		go CommandStart()
 	}
-	initCookieInfo()
 
 	http.HandleFunc("/create-image", CreateImageReq)
 	http.HandleFunc("/login", QrLoginReq)

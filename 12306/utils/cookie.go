@@ -25,7 +25,7 @@ var (
 	AlgIDRe = regexp.MustCompile("algID(.*?)x26")
 )
 
-func init() {
+func GetDeviceInfo() {
 	cookie = &cookieInfo{
 		cookie: make(map[string]string),
 		lock:   sync.Mutex{},
