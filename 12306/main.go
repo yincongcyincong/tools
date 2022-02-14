@@ -7,6 +7,7 @@ import (
 	"github.com/cihub/seelog"
 	"github.com/tools/12306/conf"
 	"github.com/tools/12306/module"
+	"github.com/tools/12306/notice"
 	"github.com/tools/12306/utils"
 	"github.com/tools/12306/view"
 	"log"
@@ -16,7 +17,7 @@ import (
 
 var (
 	runType = flag.String("run_type", "command", "command: 命令行模式，web：网页模式")
-	email   = flag.String("email", "", "格式：发送方,接收方,邮件服务,登陆用户名,登陆密码(xxxx@qq.com,xx@qq.com,smtp.qq.com,xxxxx,xxxxx), 为空表示不通知")
+	wxrobot   = flag.String("wxrobot", "", "企业微信机器人通知")
 	deviceId   = flag.String("device_id", "", "设备id")
 	deviceExp   = flag.String("device_exp", "", "设备超时时间")
 
@@ -78,6 +79,7 @@ func main() {
 	http.HandleFunc("/buy-process", BuyProcess)
 	http.HandleFunc("/re-login", ReLogin)
 	http.HandleFunc("/", LoginView)
+	http.HandleFunc("/send-msg", SendMsg)
 	if err := http.ListenAndServe(":28178", nil); err != nil {
 		log.Panicln(err)
 	}
@@ -304,6 +306,16 @@ func LoginProcess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Println(res)
+
+	utils.HTTPSuccResp(w, "")
+}
+
+func SendMsg(w http.ResponseWriter, r *http.Request) {
+	err := notice.SendWxrootMessage(*wxrobot, "车票购买成功")
+	if err != nil {
+		utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")
+		return
+	}
 
 	utils.HTTPSuccResp(w, "")
 }
