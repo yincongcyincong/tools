@@ -41,10 +41,10 @@ func InBlackList(trainNo string) bool {
 	return ok
 }
 
-func AddBlackList(trainNo string, ts int64) {
+func AddBlackList(trainNo string) {
 	bl.lock.Lock()
 	defer bl.lock.Unlock()
-	bl.list[trainNo] = ts
+	bl.list[trainNo] = time.Now().Unix() + 60
 }
 
 func deleteBlackList() {

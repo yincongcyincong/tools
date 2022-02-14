@@ -42,9 +42,9 @@ func CommandStart() {
 	}
 
 	// 开始轮训买票
-	trainMap := utils.GetBoolMap(strings.Split(trainStr, " "))
-	passengerMap := utils.GetBoolMap(strings.Split(passengerStr, " "))
-	seatSlice := strings.Split(seatStr, " ")
+	trainMap := utils.GetBoolMap(strings.Split(trainStr, "#"))
+	passengerMap := utils.GetBoolMap(strings.Split(passengerStr, "#"))
+	seatSlice := strings.Split(seatStr, "#")
 
 Search:
 	var trainData *module.TrainData
@@ -52,24 +52,25 @@ Search:
 		trainData, err = getTrainInfo(searchParam, i, trainMap, seatSlice)
 		if err == nil {
 			break
+		} else {
+			time.Sleep(2 * time.Second)
 		}
 	}
-
-	fmt.Println(fmt.Sprintf("%+v, %+v", trainData, searchParam.SeatType))
 
 	fmt.Println("开始购买", trainData.TrainNo)
 	err = startOrder(searchParam, trainData, passengerMap)
 	if err != nil {
-		utils.AddBlackList(trainData.TrainNo, time.Now().Unix())
+		utils.AddBlackList(trainData.TrainNo)
 		goto Search
 	}
+
+	// 购买完成后自动退出登陆，避免出现多次登陆的情况
+	GetLoginData()
+	LoginOut()
 
 }
 
 func getTrainInfo(searchParam *module.SearchParam, i int, trainMap map[string]bool, seatSlice []string) (*module.TrainData, error) {
-	defer func() {
-		time.Sleep(2 * time.Second)
-	}()
 
 	var err error
 	searchParam.SeatType = ""
@@ -113,7 +114,6 @@ func getTrainInfo(searchParam *module.SearchParam, i int, trainMap map[string]bo
 		}
 	}
 
-	fmt.Println(fmt.Sprintf("%+v, %+v", trainData, searchParam.SeatType))
 	if trainData == nil || searchParam.SeatType == "" {
 		fmt.Println("暂无车票可以购买")
 		return nil, errors.New("暂无车票可以购买")
@@ -137,10 +137,10 @@ func getUserInfo(searchParam *module.SearchParam, trainStr, seatStr, passengerSt
 			t.TrainNo, t.Status, t.FromStationName, t.ToStationName, t.StartTime, t.ArrivalTime, t.DistanceTime, t.SeatInfo["二等座"], t.SeatInfo["一等座"], t.SeatInfo["商务座"], t.SeatInfo["软卧"], t.SeatInfo["硬卧"], t.SeatInfo["软座"], t.SeatInfo["硬座"], t.SeatInfo["无座"]))
 	}
 
-	fmt.Println("请输入车次(多个 (空格)分隔):")
+	fmt.Println("请输入车次(多个#分隔):")
 	fmt.Scanf("%s", trainStr)
 
-	fmt.Println("请输入座位类型(多个 (空格)分隔，一等座，二等座，硬座，软卧，硬卧等):")
+	fmt.Println("请输入座位类型(多个#分隔，一等座，二等座，硬座，软卧，硬卧等):")
 	fmt.Scanf("%s", seatStr)
 
 	submitToken, err := GetRepeatSubmitToken()
@@ -157,16 +157,19 @@ func getUserInfo(searchParam *module.SearchParam, trainStr, seatStr, passengerSt
 		fmt.Println(fmt.Sprintf("乘客姓名：%s", p.PassengerName))
 	}
 
-	if *passengerStr == "" {
-		fmt.Println("请输入乘客姓名(多个 (空格)分隔): ")
-		fmt.Scanf("%s", passengerStr)
-	}
+	fmt.Println("请输入乘客姓名(多个#分隔): ")
+	fmt.Scanf("%s", passengerStr)
 
 	return
 }
 
 func startOrder(searchParam *module.SearchParam, trainData *module.TrainData, passengerMap map[string]bool) error {
-	err := CheckUser()
+	err := GetLoginData()
+	if err != nil {
+		seelog.Errorf("自动登陆失败：%v", err)
+	}
+
+	err = CheckUser()
 	if err != nil {
 		seelog.Errorf("检查用户状态失败：%v", err)
 		return err
@@ -215,10 +218,10 @@ func startOrder(searchParam *module.SearchParam, trainData *module.TrainData, pa
 	}
 
 	var orderWaitRes *module.OrderWaitRes
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 11; i++ {
 		orderWaitRes, err = OrderWait(submitToken)
 		if err != nil {
-			time.Sleep(3 * time.Second)
+			time.Sleep(5 * time.Second)
 			continue
 		}
 		if orderWaitRes.Data.OrderId != "" {

@@ -59,6 +59,7 @@ func main() {
 	http.HandleFunc("/login-process", LoginProcess)
 	http.HandleFunc("/buy-process", BuyProcess)
 	http.HandleFunc("/re-login", ReLogin)
+	http.HandleFunc("/", LoginView)
 	if err := http.ListenAndServe(":28178", nil); err != nil {
 		log.Panicln(err)
 	}
@@ -238,6 +239,10 @@ func ReLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utils.HTTPSuccResp(w, "重新登陆成功")
+}
+
+func LoginView(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprint(w, view.ViewHtml)
 }
 
 func LoginProcess(w http.ResponseWriter, r *http.Request) {
