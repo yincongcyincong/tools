@@ -17,10 +17,13 @@ import (
 var (
 	runType = flag.String("run_type", "command", "command: 命令行模式，web：网页模式")
 	email   = flag.String("email", "", "格式：发送方,接收方,邮件服务,登陆用户名,登陆密码(xxxx@qq.com,xx@qq.com,smtp.qq.com,xxxxx,xxxxx), 为空表示不通知")
+	deviceId   = flag.String("device_id", "", "设备id")
+	deviceExp   = flag.String("device_exp", "", "设备超时时间")
+
 )
 
 func initLog(logType string) {
-	logger, err := seelog.LoggerFromConfigAsString(`<seelog type="sync" minlevel="trace">
+	logger, err := seelog.LoggerFromConfigAsString(`<seelog type="sync" minlevel="info">
     <outputs formatid="main">
         ` + logType + `
     </outputs>
@@ -37,6 +40,16 @@ func initLog(logType string) {
 	}
 }
 
+func initCookieInfo() {
+	// 用户自己设置设置device信息
+	if *deviceId != "" && *deviceExp != "" {
+		utils.AddCookie(map[string]string{
+			"RAIL_DEVICEID": *deviceId,
+			"RAIL_EXPIRATION": *deviceExp,
+		})
+	}
+}
+
 func main() {
 
 	flag.Parse()
@@ -48,6 +61,7 @@ func main() {
 		initLog(`<console/>`)
 		go CommandStart()
 	}
+	initCookieInfo()
 
 	http.HandleFunc("/create-image", CreateImageReq)
 	http.HandleFunc("/login", QrLoginReq)

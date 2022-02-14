@@ -71,3 +71,8 @@ type InitConfRes struct {
 	} `json:"data"`
 	Messages []string `json:"messages"`
 }
+
+type DeviceInfo struct {
+	Exp string `json:"exp"`
+	Dfp string `json:"dfp"`
+}

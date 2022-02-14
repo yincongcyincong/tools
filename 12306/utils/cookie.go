@@ -1,9 +1,14 @@
 package utils
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"github.com/cihub/seelog"
+	"github.com/tools/12306/module"
 	"math/rand"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -15,13 +20,31 @@ type cookieInfo struct {
 	lock   sync.Mutex
 }
 
-var cookie *cookieInfo
+var (
+	cookie  *cookieInfo
+	AlgIDRe = regexp.MustCompile("algID(.*?)x26")
+)
 
 func init() {
 	cookie = &cookieInfo{
 		cookie: make(map[string]string),
 		lock:   sync.Mutex{},
 	}
+
+	// 动态获取设备信息
+	body, err := RequestGetWithoutJson("", "https://kyfw.12306.cn/otn/HttpZF/GetJS", nil)
+	if err != nil {
+		seelog.Error(err)
+		return
+	}
+
+	matchData := AlgIDRe.FindSubmatch(body)
+	if len(matchData) < 2 {
+		seelog.Error("get algID fail")
+		return
+	}
+	algId := strings.TrimLeft(string(matchData[1]), `\x3d`)
+	algId = strings.TrimRight(algId, `\`)
 
 	data := url.Values{}
 	data.Set("adblock", "0")
@@ -36,21 +59,32 @@ func init() {
 	data.Set("os", "MacIntel")
 	data.Set("platform", "WEB")
 	data.Set("plugins", "d22ca0b81584fbea62237b14bd04c866")
-	data.Set("scrAvailSize", strconv.Itoa(rand.Intn(1000)) + "x1920")
+	data.Set("scrAvailSize", strconv.Itoa(rand.Intn(1000))+"x1920")
 	data.Set("srcScreenSize", "24xx1080x1920")
 	data.Set("storeDb", "i1l1o1s1")
 	data.Set("timeZone", "-8")
 	data.Set("touchSupport", "99115dfb07133750ba677d055874de87")
 	data.Set("userAgent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.80 Safari/537.36")
 	data.Set("webSmartID", "f4e3b7b14cc647e30a6267028ad54c56")
-	data.Set("timestamp", strconv.Itoa(int(time.Now().Unix() * 1000)))
-
-
-	//response = session.httpClint.send(urls.get("GetJS"))
-	//result = re.search(r'algID\\x3d(.*?)\\x26', response)
-
-	cookie.cookie["RAIL_DEVICEID"] = "XpiVsNgwTdlWaiJ4o8fyNowlDYx4yAHUvuZYGjWsZ76OeObGN9fv9TX4ZpnTnyy2OkKd755kk2mGCc6mbqDoDzFNjRyPRYfahfklcdWDnsBpHo24jSvpUjy2To00xN8LCYwBVbHzoZagYdfmQU67FclOTJlrgriE"
-	cookie.cookie["RAIL_EXPIRATION"] = "1645054427799"
+	data.Set("timestamp", strconv.Itoa(int(time.Now().Unix()*1000)))
+	data.Set("algID", algId)
+	body, err = RequestGetWithoutJson("", "https://kyfw.12306.cn/otn/HttpZF/logdevice?"+data.Encode(), nil)
+	if err != nil {
+		seelog.Error(err)
+		return
+	}
+	if bytes.Contains(body, []byte("callbackFunction")) {
+		body = bytes.TrimLeft(body, "callbackFunction('")
+		body = bytes.TrimRight(body, "')")
+		deviceInfo := new(module.DeviceInfo)
+		err = json.Unmarshal(body, deviceInfo)
+		if err != nil {
+			seelog.Error(err)
+			return
+		}
+		cookie.cookie["RAIL_DEVICEID"] = deviceInfo.Dfp
+		cookie.cookie["RAIL_EXPIRATION"] = deviceInfo.Exp
+	}
 
 }
 
