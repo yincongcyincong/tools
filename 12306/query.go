@@ -9,8 +9,6 @@ import (
 	"github.com/tools/12306/conf"
 	"github.com/tools/12306/module"
 	"github.com/tools/12306/utils"
-	"io/ioutil"
-	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
@@ -75,24 +73,8 @@ func GetTrainInfo(searchParam *module.SearchParam) ([]*module.TrainData, error) 
 }
 
 func GetRepeatSubmitToken() (*module.SubmitToken, error) {
-	req, err := http.NewRequest("GET", "https://kyfw.12306.cn/otn/confirmPassenger/initDc", strings.NewReader(""))
-	if err != nil {
-		seelog.Error(err)
-		return nil, err
-	}
-	req.Header.Set("Cookie", utils.GetCookieStr())
 
-	resp, err := utils.GetClient().Do(req)
-	if err != nil {
-		seelog.Error(err)
-		return nil, err
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		seelog.Error(err)
-		return nil, err
-	}
+	body, err := utils.RequestGetWithoutJson(utils.GetCookieStr(), "https://kyfw.12306.cn/otn/confirmPassenger/initDc", nil)
 
 	matchRes := TokenRe.FindStringSubmatch(string(body))
 	submitToken := new(module.SubmitToken)

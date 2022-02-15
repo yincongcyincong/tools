@@ -185,7 +185,7 @@ func OrderWait(submitToken *module.SubmitToken) (*module.OrderWaitRes, error) {
 
 	// url encode需要小心，会多处理
 	var err error
-	orderWaitUrl := fmt.Sprintf("https://kyfw.12306.cn/otn/confirmPassenger/queryOrderWaitTime?random=%s&tourFlag=dc&_json_att=&REPEAT_SUBMIT_TOKEN=%s", "16442323111232", submitToken.Token)
+	orderWaitUrl := fmt.Sprintf("https://kyfw.12306.cn/otn/confirmPassenger/queryOrderWaitTime?random=%s&tourFlag=dc&_json_att=&REPEAT_SUBMIT_TOKEN=%s", strconv.Itoa(rand.Intn(math.MaxInt64)), submitToken.Token)
 	orderWaitRes := new(module.OrderWaitRes)
 	err = utils.RequestGet(utils.GetCookieStr(), orderWaitUrl, orderWaitRes, map[string]string{"Referer": "https://kyfw.12306.cn/otn/confirmPassenger/initDc"})
 	if err != nil {

@@ -218,7 +218,7 @@ func startOrder(searchParam *module.SearchParam, trainData *module.TrainData, pa
 	}
 
 	var orderWaitRes *module.OrderWaitRes
-	for i := 0; i < 11; i++ {
+	for i := 0; i < 12; i++ {
 		orderWaitRes, err = OrderWait(submitToken)
 		if err != nil {
 			time.Sleep(5 * time.Second)
