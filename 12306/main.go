@@ -24,7 +24,7 @@ var (
 )
 
 func initLog(logType string) {
-	logger, err := seelog.LoggerFromConfigAsString(`<seelog type="sync" minlevel="trace">
+	logger, err := seelog.LoggerFromConfigAsString(`<seelog type="sync" minlevel="info">
     <outputs formatid="main">
         ` + logType + `
     </outputs>
@@ -70,9 +70,11 @@ func main() {
 	case "web":
 		initLog(`<file path="log/log.log"/>`)
 		initCookieInfo()
+		utils.InitAvailableCDN()
 	default:
 		initLog(`<console/>`)
 		initCookieInfo()
+		utils.InitAvailableCDN()
 		go CommandStart()
 	}
 

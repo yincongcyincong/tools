@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/cihub/seelog"
@@ -25,13 +26,33 @@ func GetClient() *http.Client {
 				TLSHandshakeTimeout:   5 * time.Second,
 				ResponseHeaderTimeout: 5 * time.Second,
 				ExpectContinueTimeout: 1 * time.Second,
-				MaxIdleConnsPerHost:   -1,
+				MaxIdleConnsPerHost:   20,
+				IdleConnTimeout:       10 * time.Second,
 			},
 		}
 	}
 
 	return client
 
+}
+
+func GetCdnClient(cdn string) *http.Client {
+	return &http.Client{
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				addr = cdn + ":443"
+				return (&net.Dialer{
+					Timeout:   5 * time.Second,
+					KeepAlive: 1 * time.Minute,
+				}).DialContext(ctx, network, addr)
+			},
+			TLSHandshakeTimeout:   5 * time.Second,
+			ResponseHeaderTimeout: 5 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+			MaxIdleConnsPerHost:   20,
+			IdleConnTimeout:       10 * time.Second,
+		},
+	}
 }
 
 func Request(data string, cookieStr, url string, res interface{}, headers map[string]string) error {
@@ -132,6 +153,42 @@ func RequestGetWithoutJson(cookieStr, url string, headers map[string]string) ([]
 	}
 
 	resp, err := GetClient().Do(req)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	// 添加cookie
+	setCookies := resp.Header.Values("Set-Cookie")
+	AddCookieStr(setCookies)
+
+	seelog.Tracef("url: %v, response: %v", url, string(respBody))
+
+	return respBody, nil
+}
+
+
+func RequestGetWithCDN(cookieStr, url string, headers map[string]string, cdn string) ([]byte, error) {
+
+	req, err := http.NewRequest("GET", url, strings.NewReader(""))
+	if err != nil {
+		return []byte{}, err
+	}
+	req.Header.Set("Cookie", cookieStr)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.80 Safari/537.36")
+	req.Header.Set("Host", "kyfw.12306.cn")
+	req.Header.Set("X-Requested-With", "XMLHttpRequest")
+	req.Header.Set("Origin", "https://kyfw.12306.cn")
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+
+	resp, err := GetCdnClient(cdn).Do(req)
 	if err != nil {
 		return []byte{}, err
 	}
