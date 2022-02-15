@@ -13,17 +13,20 @@ import (
 )
 
 func CommandStart() {
-	qrImage, err := CreateImage()
-	if err != nil {
-		seelog.Errorf("创建二维码失败:%v", err)
-		return
-	}
-	qrImage.Image = ""
+	var err error
+	if err = GetLoginData(); err != nil {
+		qrImage, err := CreateImage()
+		if err != nil {
+			seelog.Errorf("创建二维码失败:%v", err)
+			return
+		}
+		qrImage.Image = ""
 
-	err = QrLogin(qrImage)
-	if err != nil {
-		seelog.Errorf("登陆失败:%v", err)
-		return
+		err = QrLogin(qrImage)
+		if err != nil {
+			seelog.Errorf("登陆失败:%v", err)
+			return
+		}
 	}
 	searchParam := new(module.SearchParam)
 	var trainStr, seatStr, passengerStr string
@@ -31,11 +34,6 @@ func CommandStart() {
 		getUserInfo(searchParam, &trainStr, &seatStr, &passengerStr)
 		if trainStr != "" && seatStr != "" && passengerStr != "" {
 			break
-		}
-
-		err = GetLoginData()
-		if err != nil {
-			seelog.Errorf("自动登陆失败：%v", err)
 		}
 
 		time.Sleep(5 * time.Second)

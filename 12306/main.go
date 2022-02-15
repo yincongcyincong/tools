@@ -12,15 +12,15 @@ import (
 	"github.com/tools/12306/view"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 )
 
 var (
-	runType = flag.String("run_type", "command", "command: 命令行模式，web：网页模式")
+	runType   = flag.String("run_type", "command", "command: 命令行模式，web：网页模式")
 	wxrobot   = flag.String("wxrobot", "", "企业微信机器人通知")
-	deviceId   = flag.String("device_id", "", "设备id")
-	deviceExp   = flag.String("device_exp", "", "设备超时时间")
-
+	deviceId  = flag.String("device_id", "", "设备id")
+	deviceExp = flag.String("device_exp", "", "设备超时时间")
 )
 
 func initLog(logType string) {
@@ -43,15 +43,23 @@ func initLog(logType string) {
 
 func initCookieInfo() {
 	// 用户自己设置设置device信息
-	utils.GetDeviceInfo()
-
-	if *deviceId != "" && *deviceExp != "" {
-		utils.AddCookie(map[string]string{
-			"RAIL_DEVICEID": *deviceId,
-			"RAIL_EXPIRATION": *deviceExp,
-		})
+	err := utils.ReadCookieFromFile()
+	if err != nil {
+		seelog.Error("read cookie file fail: ", err)
 	}
-	fmt.Println(utils.GetCookieStr())
+
+	railExpStr := utils.GetCookieVal("RAIL_EXPIRATION")
+	railExp, _ := strconv.Atoi(railExpStr)
+	if railExp <= int(time.Now().Unix()) {
+		utils.GetDeviceInfo()
+
+		if *deviceId != "" && *deviceExp != "" {
+			utils.AddCookie(map[string]string{
+				"RAIL_DEVICEID":   *deviceId,
+				"RAIL_EXPIRATION": *deviceExp,
+			})
+		}
+	}
 }
 
 func main() {
@@ -124,6 +132,8 @@ func QrLoginReq(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserLogoutReq(w http.ResponseWriter, r *http.Request) {
+	// cookie写入文件
+	utils.WriteCookieToFile()
 	err := LoginOut()
 	if err != nil {
 		utils.HTTPFailResp(w, http.StatusInternalServerError, 1, err.Error(), "")

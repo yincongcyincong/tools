@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"github.com/cihub/seelog"
 	"github.com/tools/12306/module"
+	"io/fs"
+	"io/ioutil"
 	"regexp"
 	"strconv"
 	"strings"
@@ -19,15 +21,14 @@ type cookieInfo struct {
 }
 
 var (
-	cookie  *cookieInfo
+	cookie  = &cookieInfo{
+		cookie: make(map[string]string),
+		lock:   sync.Mutex{},
+	}
 	AlgIDRe = regexp.MustCompile("algID(.*?)x26")
 )
 
 func GetDeviceInfo() {
-	cookie = &cookieInfo{
-		cookie: make(map[string]string),
-		lock:   sync.Mutex{},
-	}
 
 	// 动态获取设备信息
 	//body, err := RequestGetWithoutJson("", "https://kyfw.12306.cn/otn/HttpZF/GetJS", nil)
@@ -125,4 +126,26 @@ func GetCookieStr() string {
 		res = fmt.Sprintf("%s%s=%s; ", res, k, v)
 	}
 	return res
+}
+
+func WriteCookieToFile() {
+	cookieStr := GetCookieStr()
+	cookiePath := "./conf/cookie"
+	err := ioutil.WriteFile(cookiePath, []byte(cookieStr), fs.ModePerm)
+	if err != nil {
+		seelog.Error(err)
+	}
+}
+
+func ReadCookieFromFile() error {
+
+	cookiePath := "./conf/cookie"
+	cookieByte, err := ioutil.ReadFile(cookiePath)
+	if err != nil {
+		seelog.Error(err)
+		return err
+	}
+
+	AddCookieStr([]string{string(cookieByte)})
+	return nil
 }

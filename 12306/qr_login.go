@@ -74,7 +74,7 @@ func QrLogin(qrImage *module.QrImage) error {
 		if err == nil && qrRes.ResultCode == "2" {
 			break
 		} else {
-			seelog.Infof("请在'./image/'查看二维码并扫描登陆，二维码暂未登陆，继续查看二维码状态 %v", err)
+			seelog.Infof("请在'./conf/'查看二维码并用12306扫描登陆，二维码暂未登陆，继续查看二维码状态 %v", err)
 		}
 		time.Sleep(1 * time.Second)
 	}
@@ -173,17 +173,17 @@ func LoginOut() error {
 }
 
 func createQrCode(captchBody []byte) error {
-	_, err := os.Stat("./image")
+	_, err := os.Stat("./conf")
 	if err != nil {
 		seelog.Warn(err)
-		err = os.Mkdir("./image", os.ModePerm)
+		err = os.Mkdir("./conf", os.ModePerm)
 		if err != nil {
 			seelog.Error(err)
 			return err
 		}
 	}
 
-	imgPath := "./image/qrcode.png"
+	imgPath := "./conf/qrcode.png"
 	err = ioutil.WriteFile(imgPath, captchBody, fs.ModePerm)
 	if err != nil {
 		seelog.Error(err)
