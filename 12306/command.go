@@ -6,6 +6,7 @@ import (
 	"github.com/cihub/seelog"
 	"github.com/tools/12306/conf"
 	"github.com/tools/12306/module"
+	"github.com/tools/12306/notice"
 	"github.com/tools/12306/utils"
 	"math"
 	"strings"
@@ -65,6 +66,8 @@ Search:
 	// 购买完成后自动退出登陆，避免出现多次登陆的情况
 	GetLoginData()
 	LoginOut()
+
+	notice.SendWxrootMessage(*wxrobot, fmt.Sprintf("车次：%s 购买成功, 请登陆12306查看", trainData.TrainNo))
 
 }
 
@@ -226,15 +229,16 @@ func startOrder(searchParam *module.SearchParam, trainData *module.TrainData, pa
 		}
 	}
 
+	if orderWaitRes != nil {
+		err = OrderResult(submitToken, orderWaitRes.Data.OrderId)
+		if err != nil {
+			seelog.Errorf("获取订单状态失败：%v", err)
+		}
+	}
+
 	if orderWaitRes == nil || orderWaitRes.Data.OrderId == "" {
 		seelog.Infof("购买成功")
 		return nil
-	}
-
-	err = OrderResult(submitToken, orderWaitRes.Data.OrderId)
-	if err != nil {
-		seelog.Errorf("获取订单状态失败：%v", err)
-		return err
 	}
 
 	seelog.Infof("购买成功，订单号：%s", orderWaitRes.Data.OrderId)
