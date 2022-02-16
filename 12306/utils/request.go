@@ -171,12 +171,11 @@ func RequestGetWithoutJson(cookieStr, url string, headers map[string]string) ([]
 	return respBody, nil
 }
 
-
-func RequestGetWithCDN(cookieStr, url string, headers map[string]string, cdn string) ([]byte, error) {
+func RequestGetWithCDN(cookieStr, url string, res interface{}, headers map[string]string, cdn string) error {
 
 	req, err := http.NewRequest("GET", url, strings.NewReader(""))
 	if err != nil {
-		return []byte{}, err
+		return err
 	}
 	req.Header.Set("Cookie", cookieStr)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
@@ -190,21 +189,28 @@ func RequestGetWithCDN(cookieStr, url string, headers map[string]string, cdn str
 
 	resp, err := GetCdnClient(cdn).Do(req)
 	if err != nil {
-		return []byte{}, err
+		return err
 	}
 
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return []byte{}, err
+		return err
+	}
+
+	if res != nil {
+		err = json.Unmarshal(respBody, res)
+		if err != nil {
+			return err
+		}
 	}
 
 	// 添加cookie
 	setCookies := resp.Header.Values("Set-Cookie")
 	AddCookieStr(setCookies)
 
-	seelog.Tracef("url: %v, response: %v", url, string(respBody))
+	seelog.Tracef("url: %v, response: %v, cdn: %s", url, string(respBody[:500]), cdn)
 
-	return respBody, nil
+	return nil
 }
 
 func EncodeParam(r *http.Request, param interface{}) error {

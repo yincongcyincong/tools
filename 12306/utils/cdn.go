@@ -4,6 +4,7 @@ import (
 	"github.com/cihub/seelog"
 	"github.com/tools/12306/conf"
 	"sync"
+	"sync/atomic"
 )
 
 type AvailableCDN struct {
@@ -11,6 +12,7 @@ type AvailableCDN struct {
 	currency int
 	lock     sync.Mutex
 	wg       sync.WaitGroup
+	idx      int64
 }
 
 var availableCDN = &AvailableCDN{
@@ -18,6 +20,7 @@ var availableCDN = &AvailableCDN{
 	currency: 10,
 	lock:     sync.Mutex{},
 	wg:       sync.WaitGroup{},
+	idx:      0,
 }
 
 func InitAvailableCDN() {
@@ -34,7 +37,7 @@ func InitAvailableCDN() {
 		go func(cdns []string) {
 			defer availableCDN.wg.Done()
 			for _, cdn := range cdns {
-				_, err := RequestGetWithCDN(GetCookieStr(), "https://kyfw.12306.cn/otn/dynamicJs/omseuuq", nil, cdn)
+				err := RequestGetWithCDN(GetCookieStr(), "https://kyfw.12306.cn/otn/dynamicJs/omseuuq", nil, nil, cdn)
 				if err != nil {
 					seelog.Tracef("%s query fail", cdn)
 					continue
@@ -52,4 +55,10 @@ func InitAvailableCDN() {
 	availableCDN.wg.Wait()
 	seelog.Infof("available cdn num: %d", len(availableCDN.cdns))
 
+}
+
+func GetCdn() string {
+	cdn := availableCDN.cdns[int(availableCDN.idx)%len(availableCDN.cdns)]
+	atomic.AddInt64(&availableCDN.idx, 1)
+	return cdn
 }

@@ -31,7 +31,7 @@ var (
 func GetDeviceInfo() {
 
 	// 动态获取设备信息
-	//body, err := RequestGetWithoutJson("", "https://kyfw.12306.cn/otn/HttpZF/GetJS", nil)
+	//body, err := RequestGetWithoutJson("", "https://kyfw.12306.cn/otn/HttpZF/GetJS", nil, nil)
 	//if err != nil {
 	//	seelog.Error(err)
 	//	return
