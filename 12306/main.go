@@ -50,7 +50,8 @@ func initCookieInfo() {
 
 	railExpStr := utils.GetCookieVal("RAIL_EXPIRATION")
 	railExp, _ := strconv.Atoi(railExpStr)
-	if railExp <= int(time.Now().Unix()) {
+	if railExp <= int(time.Now().Unix() * 1000) {
+		seelog.Info("开始重新获取设备信息")
 		utils.GetDeviceInfo()
 
 		if *deviceId != "" && *deviceExp != "" {
@@ -65,6 +66,9 @@ func initCookieInfo() {
 func main() {
 
 	flag.Parse()
+
+	conf.InitConf()
+	utils.InitBlacklist()
 
 	switch *runType {
 	case "web":

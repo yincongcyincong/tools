@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"github.com/cihub/seelog"
 	"github.com/tools/12306/conf"
 	"github.com/tools/12306/module"
@@ -18,18 +19,13 @@ import (
 )
 
 func CreateImage() (*module.QrImage, error) {
-	initReq, err := http.NewRequest("GET", "https://kyfw.12306.cn/otn/login/init", strings.NewReader(""))
+	_, err := utils.RequestGetWithoutJson(utils.GetCookieStr(), "https://kyfw.12306.cn/otn/login/init", nil)
 	if err != nil {
 		seelog.Error(err)
 		return nil, err
 	}
-	initReq.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36")
-	resp, err := utils.GetClient().Do(initReq)
-	if err != nil {
-		seelog.Error(err)
-		return nil, err
-	}
-	utils.AddCookieStr(resp.Header.Values("Set-Cookie"))
+
+	fmt.Println(utils.GetCookieStr())
 
 	data := make(url.Values)
 	data.Set("appid", "otn")

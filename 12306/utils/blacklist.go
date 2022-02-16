@@ -11,14 +11,12 @@ type blacklist struct {
 	lock sync.Mutex
 }
 
-var bl *blacklist
+var bl  = &blacklist{
+	list: make(map[string]int64),
+	lock: sync.Mutex{},
+}
 
-func init() {
-	bl = &blacklist{
-		list: make(map[string]int64),
-		lock: sync.Mutex{},
-	}
-
+func InitBlacklist() {
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
