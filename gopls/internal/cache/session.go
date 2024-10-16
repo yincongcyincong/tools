@@ -230,6 +230,7 @@ func (s *Session) createView(ctx context.Context, def *viewDefinition) (*View, *
 		initialWorkspaceLoad: make(chan struct{}),
 		initializationSema:   make(chan struct{}, 1),
 		baseCtx:              baseCtx,
+		pkgIndex:             typerefs.NewPackageIndex(),
 		parseCache:           s.parseCache,
 		ignoreFilter:         ignoreFilter,
 		fs:                   s.overlayFS,
@@ -248,7 +249,6 @@ func (s *Session) createView(ctx context.Context, def *viewDefinition) (*View, *
 		packages:         new(persistent.Map[PackageID, *packageHandle]),
 		meta:             new(metadata.Graph),
 		files:            newFileMap(),
-		activePackages:   new(persistent.Map[PackageID, *Package]),
 		symbolizeHandles: new(persistent.Map[protocol.DocumentURI, *memoize.Promise]),
 		shouldLoad:       new(persistent.Map[PackageID, []PackagePath]),
 		unloadableFiles:  new(persistent.Set[protocol.DocumentURI]),
@@ -257,7 +257,6 @@ func (s *Session) createView(ctx context.Context, def *viewDefinition) (*View, *
 		modTidyHandles:   new(persistent.Map[protocol.DocumentURI, *memoize.Promise]),
 		modVulnHandles:   new(persistent.Map[protocol.DocumentURI, *memoize.Promise]),
 		modWhyHandles:    new(persistent.Map[protocol.DocumentURI, *memoize.Promise]),
-		pkgIndex:         typerefs.NewPackageIndex(),
 		moduleUpgrades:   new(persistent.Map[protocol.DocumentURI, map[string]string]),
 		vulns:            new(persistent.Map[protocol.DocumentURI, *vulncheck.Result]),
 	}

@@ -13,7 +13,6 @@
 package modindex
 
 import (
-	"log"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -91,48 +90,43 @@ func (w *work) buildIndex() error {
 	if err != nil {
 		return err
 	}
-	log.Printf("%d dirs, %d ips", len(dirs), len(newdirs))
 	// for each import path it might occur only in newdirs,
 	// only in w.oldIndex, or in both.
 	// If it occurs in both, use the semantically later one
 	if w.oldIndex != nil {
-		killed := 0
 		for _, e := range w.oldIndex.Entries {
 			found, ok := newdirs[e.ImportPath]
 			if !ok {
-				continue
+				w.newIndex.Entries = append(w.newIndex.Entries, e)
+				continue // use this one, there is no new one
 			}
 			if semver.Compare(found[0].version, e.Version) > 0 {
-				// the new one is better, disable the old one
-				e.ImportPath = ""
-				killed++
+				// use the new one
 			} else {
 				// use the old one, forget the new one
+				w.newIndex.Entries = append(w.newIndex.Entries, e)
 				delete(newdirs, e.ImportPath)
 			}
 		}
-		log.Printf("%d killed, %d ips", killed, len(newdirs))
 	}
-	// Build the skeleton of the new index using newdirs,
-	// and include the surviving parts of the old index
-	if w.oldIndex != nil {
-		for _, e := range w.oldIndex.Entries {
-			if e.ImportPath != "" {
-				w.newIndex.Entries = append(w.newIndex.Entries, e)
-			}
-		}
-	}
+	// get symbol information for all the new diredtories
+	getSymbols(w.cacheDir, newdirs)
+	// assemble the new index entries
 	for k, v := range newdirs {
 		d := v[0]
+		pkg, names := processSyms(d.syms)
+		if pkg == "" {
+			continue // PJW: does this ever happen?
+		}
 		entry := Entry{
+			PkgName:    pkg,
 			Dir:        d.path,
 			ImportPath: k,
 			Version:    d.version,
+			Names:      names,
 		}
 		w.newIndex.Entries = append(w.newIndex.Entries, entry)
 	}
-	// find symbols for the incomplete entries
-	log.Print("not finding any symbols yet")
 	// sort the entries in the new index
 	slices.SortFunc(w.newIndex.Entries, func(l, r Entry) int {
 		if n := strings.Compare(l.PkgName, r.PkgName); n != 0 {

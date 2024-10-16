@@ -23,6 +23,7 @@ type directory struct {
 	path       Relpath
 	importPath string
 	version    string // semantic version
+	syms       []symbol
 }
 
 // filterDirs groups the directories by import path,
@@ -48,7 +49,7 @@ func byImportPath(dirs []Relpath) (map[string][]*directory, error) {
 	return ans, nil
 }
 
-// sort the directories by semantic version, lates first
+// sort the directories by semantic version, latest first
 func semanticSort(v []*directory) {
 	slices.SortFunc(v, func(l, r *directory) int {
 		if n := semver.Compare(l.version, r.version); n != 0 {

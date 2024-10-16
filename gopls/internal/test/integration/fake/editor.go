@@ -42,12 +42,14 @@ type Editor struct {
 
 	// TODO(rfindley): buffers should be keyed by protocol.DocumentURI.
 	mu                       sync.Mutex
-	config                   EditorConfig                // editor configuration
-	buffers                  map[string]buffer           // open buffers (relative path -> buffer content)
-	serverCapabilities       protocol.ServerCapabilities // capabilities / options
-	semTokOpts               protocol.SemanticTokensOptions
-	watchPatterns            []*glob.Glob // glob patterns to watch
+	config                   EditorConfig      // editor configuration
+	buffers                  map[string]buffer // open buffers (relative path -> buffer content)
+	watchPatterns            []*glob.Glob      // glob patterns to watch
 	suggestionUseReplaceMode bool
+
+	// These fields are populated by Connect.
+	serverCapabilities protocol.ServerCapabilities
+	semTokOpts         protocol.SemanticTokensOptions
 
 	// Call metrics for the purpose of expectations. This is done in an ad-hoc
 	// manner for now. Perhaps in the future we should do something more
@@ -320,10 +322,8 @@ func (e *Editor) initialize(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("unmarshalling semantic tokens options: %v", err)
 		}
-		e.mu.Lock()
 		e.serverCapabilities = resp.Capabilities
 		e.semTokOpts = semTokOpts
-		e.mu.Unlock()
 
 		if err := e.Server.Initialized(ctx, &protocol.InitializedParams{}); err != nil {
 			return fmt.Errorf("initialized: %w", err)
@@ -357,6 +357,14 @@ func clientCapabilities(cfg EditorConfig) (protocol.ClientCapabilities, error) {
 		// Additional modifiers supported by this client:
 		"interface", "struct", "signature", "pointer", "array", "map", "slice", "chan", "string", "number", "bool", "invalid",
 	}
+	// Request that the server provide its complete list of code action kinds.
+	capabilities.TextDocument.CodeAction = protocol.CodeActionClientCapabilities{
+		CodeActionLiteralSupport: protocol.ClientCodeActionLiteralOptions{
+			CodeActionKind: protocol.ClientCodeActionKindOptions{
+				ValueSet: []protocol.CodeActionKind{protocol.Empty}, // => all
+			},
+		},
+	}
 	// The LSP tests have historically enabled this flag,
 	// but really we should test both ways for older editors.
 	capabilities.TextDocument.DocumentSymbol.HierarchicalDocumentSymbolSupport = true
@@ -378,6 +386,12 @@ func clientCapabilities(cfg EditorConfig) (protocol.ClientCapabilities, error) {
 		}
 	}
 	return capabilities, nil
+}
+
+// Returns the connected LSP server's capabilities.
+// Only populated after a call to [Editor.Connect].
+func (e *Editor) ServerCapabilities() protocol.ServerCapabilities {
+	return e.serverCapabilities
 }
 
 // marshalUnmarshal is a helper to json Marshal and then Unmarshal as a
@@ -1011,6 +1025,42 @@ func (e *Editor) ApplyCodeAction(ctx context.Context, action protocol.CodeAction
 	return e.sandbox.Workdir.CheckForFileChanges(ctx)
 }
 
+func (e *Editor) Diagnostics(ctx context.Context, path string) ([]protocol.Diagnostic, error) {
+	if e.Server == nil {
+		return nil, errors.New("not connected")
+	}
+	e.mu.Lock()
+	capabilities := e.serverCapabilities.DiagnosticProvider
+	e.mu.Unlock()
+
+	if capabilities == nil {
+		return nil, errors.New("server does not support pull diagnostics")
+	}
+	switch capabilities.Value.(type) {
+	case nil:
+		return nil, errors.New("server does not support pull diagnostics")
+	case protocol.DiagnosticOptions:
+	case protocol.DiagnosticRegistrationOptions:
+		// We could optionally check TextDocumentRegistrationOptions here to
+		// see if any filters apply to path.
+	default:
+		panic(fmt.Sprintf("unknown DiagnosticsProvider type %T", capabilities.Value))
+	}
+
+	params := &protocol.DocumentDiagnosticParams{
+		TextDocument: e.TextDocumentIdentifier(path),
+	}
+	result, err := e.Server.Diagnostic(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	report, ok := result.Value.(protocol.RelatedFullDocumentDiagnosticReport)
+	if !ok {
+		return nil, fmt.Errorf("unexpected diagnostics report type %T", result)
+	}
+	return report.Items, nil
+}
+
 // GetQuickFixes returns the available quick fix code actions.
 func (e *Editor) GetQuickFixes(ctx context.Context, loc protocol.Location, diagnostics []protocol.Diagnostic) ([]protocol.CodeAction, error) {
 	return e.CodeActions(ctx, loc, diagnostics, protocol.QuickFix, protocol.SourceFixAll)
@@ -1570,6 +1620,7 @@ func (e *Editor) CodeAction(ctx context.Context, loc protocol.Location, diagnost
 		Context: protocol.CodeActionContext{
 			Diagnostics: diagnostics,
 			TriggerKind: &trigger,
+			Only:        []protocol.CodeActionKind{protocol.Empty}, // => all
 		},
 		Range: loc.Range, // may be zero
 	}
@@ -1680,9 +1731,7 @@ type SemanticToken struct {
 // Note: previously this function elided comment, string, and number tokens.
 // Instead, filtering of token types should be done by the caller.
 func (e *Editor) interpretTokens(x []uint32, contents string) []SemanticToken {
-	e.mu.Lock()
 	legend := e.semTokOpts.Legend
-	e.mu.Unlock()
 	lines := strings.Split(contents, "\n")
 	ans := []SemanticToken{}
 	line, col := 1, 1
